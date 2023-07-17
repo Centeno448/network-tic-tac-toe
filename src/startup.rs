@@ -1,6 +1,5 @@
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
-use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 
 use crate::configuration::ApplicationSettings;
@@ -15,11 +14,13 @@ pub struct ApplicationBaseUrl(pub String);
 
 impl Application {
     pub async fn build(configuration: ApplicationSettings) -> Result<Self, anyhow::Error> {
-        let address = format!("{}:{}", configuration.host, configuration.port);
-        let listener = TcpListener::bind(address)?;
-
-        let port = listener.local_addr().unwrap().port();
-        let server = run(listener, configuration.base_url).await?;
+        let port = configuration.port;
+        let server = run(
+            configuration.host,
+            configuration.port,
+            configuration.base_url,
+        )
+        .await?;
 
         Ok(Self { port, server })
     }
@@ -33,14 +34,14 @@ impl Application {
     }
 }
 
-pub async fn run(listener: TcpListener, base_url: String) -> Result<Server, anyhow::Error> {
+pub async fn run(host: String, port: u16, base_url: String) -> Result<Server, anyhow::Error> {
     let server = HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
             .route("/", web::get().to(index))
             .app_data(base_url.clone())
     })
-    .listen(listener)?
+    .bind((host, port))?
     .run();
 
     Ok(server)

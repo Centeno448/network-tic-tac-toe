@@ -21,7 +21,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                 ctx.text(response)
             }
             Ok(ws::Message::Close(reason)) => {
-                println!("Closing connection");
+                tracing::info!("Closing connection");
                 ctx.close(reason);
             }
             _ => (),
@@ -29,10 +29,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
     }
 }
 
+#[tracing::instrument(name = "Starting new connection", skip_all)]
 pub async fn index(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
     let player_session = PlayerSession { player_id: 1 };
     let resp = ws::start(player_session, &req, stream).map_err(|e| {
-        println!("Error starting session {e}");
+        tracing::error!("Error starting session {e}");
         e
     });
 
