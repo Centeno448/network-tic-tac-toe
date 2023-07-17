@@ -1,4 +1,5 @@
 use actix::{Actor, StreamHandler};
+use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 
 /// Define HTTP actor
@@ -26,6 +27,16 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
             _ => (),
         }
     }
+}
+
+pub async fn index(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
+    let player_session = PlayerSession { player_id: 1 };
+    let resp = ws::start(player_session, &req, stream).map_err(|e| {
+        println!("Error starting session {e}");
+        e
+    });
+
+    resp
 }
 
 fn process_message(text: &str) -> String {

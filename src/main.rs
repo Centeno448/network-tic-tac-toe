@@ -1,22 +1,25 @@
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
-use actix_web_actors::ws;
+use std::fs::File;
+use std::io::ErrorKind;
+use std::sync::Mutex;
 
-use network_tic_tac_toe::player_session::PlayerSession;
-
-pub async fn index(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
-    let player_session = PlayerSession { player_id: 1 };
-    let resp = ws::start(player_session, &req, stream).map_err(|e| {
-        println!("Error starting session {e}");
-        e
-    });
-
-    resp
-}
+use network_tic_tac_toe::configuration::get_configuration;
+use network_tic_tac_toe::startup::Application;
+use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| App::new().route("/", web::get().to(index)))
-        .bind(("127.0.0.1", 3012))?
-        .run()
+    let log_file = File::create("network-tic-tac-toe.log")?;
+    let subscriber = get_subscriber(
+        "network-tic-tac-toe".into(),
+        "info".into(),
+        Mutex::new(log_file),
+    );
+    init_subscriber(subscriber);
+
+    let configuration = get_configuration().expect("Failed to read configuration.");
+    let application = Application::build(configuration.clone())
         .await
+        .map_err(|e| std::io::Error::new(ErrorKind::Interrupted, e))?;
+
+    application.run_until_stopped().await
 }
