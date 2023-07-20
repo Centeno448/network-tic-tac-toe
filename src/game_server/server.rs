@@ -69,10 +69,8 @@ impl Actor for GameServer {
 impl Handler<Connect> for GameServer {
     type Result = ();
 
-    #[tracing::instrument(name = "Handling player connect", skip_all, fields(player_session_id))]
+    #[tracing::instrument(name = "Player connect", skip_all, fields(player_session_id=%msg.id))]
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
-        tracing::Span::current().record("player_session_id", &msg.id.to_string());
-
         let id = msg.id;
         self.sessions.insert(id, msg.addr);
 
@@ -92,13 +90,11 @@ impl Handler<Disconnect> for GameServer {
     type Result = ();
 
     #[tracing::instrument(
-        name = "Handling player disconnect",
+        name = "Player disconnect",
         skip_all,
-        fields(player_session_id)
+        fields(player_session_id=%msg.id)
     )]
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) -> Self::Result {
-        tracing::Span::current().record("player_session_id", &msg.id.to_string());
-
         if self.sessions.remove(&msg.id).is_some() {
             for (_, sessions) in &mut self.rooms {
                 sessions.remove(&msg.id);
