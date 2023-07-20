@@ -1,9 +1,16 @@
+use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
+
+use actix::{Actor, Addr};
 use actix_web::dev::Server;
-use actix_web::{web, App, HttpServer};
+use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web_actors::ws;
 use tracing_actix_web::TracingLogger;
+use uuid::Uuid;
 
 use crate::configuration::ApplicationSettings;
-use crate::player_session::index;
+use crate::game_server::GameServer;
+use crate::player_session::PlayerSession;
 
 pub struct Application {
     port: u16,
@@ -15,12 +22,7 @@ pub struct ApplicationBaseUrl(pub String);
 impl Application {
     pub async fn build(configuration: ApplicationSettings) -> Result<Self, anyhow::Error> {
         let port = configuration.port;
-        let server = run(
-            configuration.host,
-            configuration.port,
-            configuration.base_url,
-        )
-        .await?;
+        let server = run(configuration.host, configuration.port).await?;
 
         Ok(Self { port, server })
     }
@@ -34,12 +36,32 @@ impl Application {
     }
 }
 
-pub async fn run(host: String, port: u16, base_url: String) -> Result<Server, anyhow::Error> {
+pub async fn index(
+    req: HttpRequest,
+    stream: web::Payload,
+    game_server: web::Data<Addr<GameServer>>,
+) -> Result<HttpResponse, Error> {
+    let player_session = PlayerSession {
+        id: Uuid::new_v4(),
+        game_server_addr: game_server.get_ref().clone(),
+    };
+    let resp = ws::start(player_session, &req, stream).map_err(|e| {
+        tracing::error!("Error starting session {e}");
+        e
+    });
+
+    resp
+}
+
+pub async fn run(host: String, port: u16) -> Result<Server, anyhow::Error> {
+    let app_state = Arc::new(AtomicUsize::new(0));
+    let game_server = GameServer::new(app_state.clone()).start();
+
     let server = HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
+            .app_data(web::Data::new(game_server.clone()))
             .route("/", web::get().to(index))
-            .app_data(base_url.clone())
     })
     .bind((host, port))?
     .run();

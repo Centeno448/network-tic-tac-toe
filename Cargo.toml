@@ -16,3 +16,5 @@ serde-aux = "4.1.2"
 anyhow = "1.0.69"
 serde = { version = "1.0.171", features = ["derive"] }
 config = "0.13.3"
+rand = "0.8.5"
+uuid = { version = "1.4.1", features = ["v4", "serde"] }
