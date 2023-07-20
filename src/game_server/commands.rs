@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub enum CommandCategory {
     PlayerConnected,
     PlayerDisconnected,
@@ -9,8 +9,14 @@ pub enum CommandCategory {
     GameOver,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Commmand {
+#[derive(Debug, Serialize)]
+pub struct Commmand<S: Serialize> {
     pub category: CommandCategory,
-    pub body: String,
+    pub body: S,
+}
+
+impl<S: Serialize> Commmand<S> {
+    pub fn new(category: CommandCategory, body: S) -> Self {
+        Commmand { category, body }
+    }
 }

@@ -85,10 +85,7 @@ impl Handler<Connect> for GameServer {
         let count = self.visitor_count.load(Ordering::Relaxed);
         tracing::info!("Number of players in lobby: {count}");
 
-        let command = Commmand {
-            category: CommandCategory::PlayerConnected,
-            body: msg.id.to_string(),
-        };
+        let command = Commmand::new(CommandCategory::PlayerConnected, msg.id.to_string());
 
         let result = serde_json::to_string(&command).unwrap_or("".into());
 
@@ -114,5 +111,11 @@ impl Handler<Disconnect> for GameServer {
         let _ = self.visitor_count.fetch_sub(1, Ordering::SeqCst);
         let count = self.visitor_count.load(Ordering::Relaxed);
         tracing::info!("Number of players in lobby: {count}");
+
+        let command = Commmand::new(CommandCategory::PlayerDisconnected, msg.id.to_string());
+
+        let result = serde_json::to_string(&command).unwrap_or("".into());
+
+        self.send_message("lobby", &result, msg.id);
     }
 }
