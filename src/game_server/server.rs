@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+use crate::game_server::{CommandCategory, Commmand};
 use actix::prelude::*;
 use uuid::Uuid;
 
@@ -49,7 +50,7 @@ impl GameServer {
 
 impl GameServer {
     /// Send message to all users in the room
-    fn _send_message(&self, room: &str, message: &str, skip_id: Uuid) {
+    fn send_message(&self, room: &str, message: &str, skip_id: Uuid) {
         if let Some(sessions) = self.rooms.get(room) {
             for id in sessions {
                 if *id != skip_id {
@@ -83,6 +84,15 @@ impl Handler<Connect> for GameServer {
         let _ = self.visitor_count.fetch_add(1, Ordering::SeqCst);
         let count = self.visitor_count.load(Ordering::Relaxed);
         tracing::info!("Number of players in lobby: {count}");
+
+        let command = Commmand {
+            category: CommandCategory::PlayerConnected,
+            body: msg.id.to_string(),
+        };
+
+        let result = serde_json::to_string(&command).unwrap_or("".into());
+
+        self.send_message("lobby", &result, id);
     }
 }
 
