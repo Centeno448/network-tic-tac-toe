@@ -42,7 +42,22 @@ impl Actor for PlayerSession {
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
-            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Text(text)) => match text.trim() {
+                "/start" => {
+                    self.game_server_addr
+                        .send(game_server::StartGame { id: self.id })
+                        .into_actor(self)
+                        .then(|res, _, ctx| {
+                            match res {
+                                Ok(_) => (),
+                                _ => ctx.stop(),
+                            }
+                            fut::ready(())
+                        })
+                        .wait(ctx);
+                }
+                _ => (),
+            },
             Ok(ws::Message::Close(reason)) => {
                 ctx.close(reason);
                 ctx.stop();
