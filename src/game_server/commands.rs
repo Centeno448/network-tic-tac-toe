@@ -5,8 +5,39 @@ pub enum CommandCategory {
     PlayerConnected,
     PlayerDisconnected,
     GameStart,
-    EndTurn,
+    Turn,
     GameOver,
+}
+
+#[derive(Debug, Serialize)]
+pub enum TurnMove {
+    LL,
+    ML,
+    UL,
+    LM,
+    MM,
+    UM,
+    LR,
+    MR,
+    UR,
+    None,
+}
+
+impl From<&str> for TurnMove {
+    fn from(value: &str) -> Self {
+        match value {
+            "LL" => Self::LL,
+            "ML" => Self::ML,
+            "UL" => Self::UL,
+            "LM" => Self::LM,
+            "MM" => Self::MM,
+            "UM" => Self::UM,
+            "LR" => Self::LR,
+            "MR" => Self::MR,
+            "UR" => Self::UR,
+            _ => Self::None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]

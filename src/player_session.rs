@@ -42,8 +42,9 @@ impl Actor for PlayerSession {
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
-            Ok(ws::Message::Text(text)) => match text.trim() {
-                "/start" => {
+            Ok(ws::Message::Text(text)) => {
+                let trimmed_text = text.trim();
+                if trimmed_text.starts_with("/start") {
                     self.game_server_addr
                         .send(game_server::StartGame { id: self.id })
                         .into_actor(self)
@@ -55,9 +56,24 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             fut::ready(())
                         })
                         .wait(ctx);
+                } else if trimmed_text.starts_with("/turn") {
+                    let turn_move: Vec<&str> = trimmed_text.split(' ').collect();
+                    self.game_server_addr
+                        .send(game_server::Turn {
+                            id: self.id,
+                            turn_move: turn_move[1].into(),
+                        })
+                        .into_actor(self)
+                        .then(|res, _, ctx| {
+                            match res {
+                                Ok(_) => (),
+                                _ => ctx.stop(),
+                            }
+                            fut::ready(())
+                        })
+                        .wait(ctx);
                 }
-                _ => (),
-            },
+            }
             Ok(ws::Message::Close(reason)) => {
                 ctx.close(reason);
                 ctx.stop();

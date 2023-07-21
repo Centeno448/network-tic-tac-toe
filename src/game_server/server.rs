@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use crate::game_server::{CommandCategory, Commmand};
+use crate::game_server::{CommandCategory, Commmand, TurnMove};
 use actix::prelude::*;
 use uuid::Uuid;
 
@@ -31,6 +31,13 @@ pub struct Disconnect {
 #[rtype(result = "()")]
 pub struct StartGame {
     pub id: Uuid,
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Turn {
+    pub id: Uuid,
+    pub turn_move: TurnMove,
 }
 
 #[derive(Debug)]
@@ -186,6 +193,36 @@ impl Handler<StartGame> for GameServer {
             let command = Commmand::new_serialized(CommandCategory::GameStart, "");
 
             self.send_message_all(&room_name, &command);
+        }
+    }
+}
+
+impl Handler<Turn> for GameServer {
+    type Result = ();
+
+    #[tracing::instrument(name = "Turn", skip_all, fields(room_name, player_id=%msg.id, turn_move=?msg.turn_move))]
+    fn handle(&mut self, msg: Turn, _: &mut Self::Context) -> Self::Result {
+        let mut result_room: Option<String> = None;
+
+        for (room_name, room) in self
+            .rooms
+            .iter()
+            .filter(|(_, room)| room.status == GameRoomStatus::Started)
+        {
+            if room.players.contains(&msg.id) {
+                tracing::Span::current().record("room_name", room_name);
+                result_room = Some(room_name.clone());
+
+                break;
+            } else {
+                tracing::info!("Player is not in any room with status started.");
+            }
+        }
+
+        if let Some(room_name) = result_room {
+            let command = Commmand::new_serialized(CommandCategory::Turn, &msg.turn_move);
+
+            self.send_message(&room_name, &command, msg.id);
         }
     }
 }
