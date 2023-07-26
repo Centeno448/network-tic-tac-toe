@@ -1,3 +1,5 @@
+use crate::game_server::{CommandCategory, Commmand, TeamSymbol, TurnMove};
+use actix::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
     sync::{
@@ -5,9 +7,6 @@ use std::{
         Arc,
     },
 };
-
-use crate::game_server::{CommandCategory, Commmand, TurnMove};
-use actix::prelude::*;
 use uuid::Uuid;
 
 #[derive(Message)]
@@ -15,7 +14,7 @@ use uuid::Uuid;
 pub struct Message(pub String);
 
 #[derive(Message)]
-#[rtype(result = "()")]
+#[rtype(result = "TeamSymbol")]
 pub struct Connect {
     pub id: Uuid,
     pub addr: Recipient<Message>,
@@ -37,6 +36,7 @@ pub struct StartGame {
 #[rtype(result = "()")]
 pub struct Turn {
     pub id: Uuid,
+    pub team_symbol: Option<TeamSymbol>,
     pub turn_move: TurnMove,
 }
 
@@ -51,6 +51,7 @@ pub struct GameServer {
 pub struct GameRoom {
     pub players: HashSet<Uuid>,
     pub status: GameRoomStatus,
+    pub current_turn: TeamSymbol,
 }
 
 impl GameRoom {
@@ -58,6 +59,7 @@ impl GameRoom {
         GameRoom {
             players: HashSet::new(),
             status: GameRoomStatus::Waiting,
+            current_turn: TeamSymbol::Cross,
         }
     }
 }
@@ -113,7 +115,7 @@ impl Actor for GameServer {
 }
 
 impl Handler<Connect> for GameServer {
-    type Result = ();
+    type Result = TeamSymbol;
 
     #[tracing::instrument(name = "Player connect", skip_all, fields(player_session_id=%msg.id))]
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
@@ -136,6 +138,12 @@ impl Handler<Connect> for GameServer {
         let result = serde_json::to_string(&command).unwrap_or("".into());
 
         self.send_message("lobby", &result, id);
+
+        if self.rooms.get("lobby").unwrap().players.len() > 1 {
+            TeamSymbol::Circle
+        } else {
+            TeamSymbol::Cross
+        }
     }
 }
 
@@ -211,6 +219,12 @@ impl Handler<Turn> for GameServer {
         {
             if room.players.contains(&msg.id) {
                 tracing::Span::current().record("room_name", room_name);
+
+                if !is_valid_turn(room.current_turn, msg.team_symbol) {
+                    tracing::info!("Player symbol and current turn do not match.");
+                    break;
+                }
+
                 result_room = Some(room_name.clone());
 
                 break;
@@ -225,4 +239,16 @@ impl Handler<Turn> for GameServer {
             self.send_message(&room_name, &command, msg.id);
         }
     }
+}
+
+fn is_valid_turn(current_turn: TeamSymbol, player_symbol: Option<TeamSymbol>) -> bool {
+    if player_symbol.is_none() {
+        return false;
+    }
+
+    if current_turn != player_symbol.unwrap() {
+        return false;
+    }
+
+    true
 }

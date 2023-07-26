@@ -7,6 +7,7 @@ use crate::game_server;
 /// Define HTTP actor
 pub struct PlayerSession {
     pub id: Uuid,
+    pub team_symbol: Option<game_server::TeamSymbol>,
     pub game_server_addr: Addr<game_server::GameServer>,
 }
 
@@ -21,9 +22,11 @@ impl Actor for PlayerSession {
                 addr: session_addr.recipient(),
             })
             .into_actor(self)
-            .then(|res, _, ctx| {
+            .then(|res, player_session, ctx| {
                 match res {
-                    Ok(_) => (),
+                    Ok(team_symbol) => {
+                        player_session.team_symbol = Some(team_symbol);
+                    }
                     _ => ctx.stop(),
                 }
                 fut::ready(())
@@ -61,6 +64,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                     self.game_server_addr
                         .send(game_server::Turn {
                             id: self.id,
+                            team_symbol: self.team_symbol,
                             turn_move: turn_move[1].into(),
                         })
                         .into_actor(self)

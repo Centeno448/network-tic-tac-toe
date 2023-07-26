@@ -1,3 +1,5 @@
+use actix::dev::{MessageResponse, OneshotSender};
+use actix::prelude::{Actor, Message};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -36,6 +38,24 @@ impl From<&str> for TurnMove {
             "MR" => Self::MR,
             "UR" => Self::UR,
             _ => Self::None,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum TeamSymbol {
+    Cross,
+    Circle,
+}
+
+impl<A, M> MessageResponse<A, M> for TeamSymbol
+where
+    A: Actor,
+    M: Message<Result = TeamSymbol>,
+{
+    fn handle(self, _: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
+        if let Some(tx) = tx {
+            let _ = tx.send(self);
         }
     }
 }
