@@ -2,7 +2,7 @@ use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::{Actor, Message};
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq, Hash, Clone)]
 pub enum TurnMove {
     LL,
     ML,
@@ -14,6 +14,12 @@ pub enum TurnMove {
     MR,
     UR,
     None,
+}
+
+impl std::fmt::Display for TurnMove {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self.to_string())
+    }
 }
 
 impl From<&str> for TurnMove {
@@ -37,6 +43,15 @@ impl From<&str> for TurnMove {
 pub enum TeamSymbol {
     Cross,
     Circle,
+}
+
+impl std::fmt::Display for TeamSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Cross => write!(f, "Cross"),
+            Self::Circle => write!(f, "Circle"),
+        }
+    }
 }
 
 impl<A, M> MessageResponse<A, M> for TeamSymbol

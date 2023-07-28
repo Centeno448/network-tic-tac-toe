@@ -5,6 +5,7 @@ use std::{
 };
 use uuid::Uuid;
 
+use super::domain::TurnMove;
 use crate::game_server::domain::TeamSymbol;
 
 #[derive(Message)]
@@ -23,6 +24,7 @@ pub struct GameRoom {
     pub players: HashSet<Uuid>,
     pub status: GameRoomStatus,
     pub current_turn: TeamSymbol,
+    pub moves_made: HashMap<TurnMove, Uuid>,
 }
 
 impl GameRoom {
@@ -31,6 +33,7 @@ impl GameRoom {
             players: HashSet::new(),
             status: GameRoomStatus::Waiting,
             current_turn: TeamSymbol::Cross,
+            moves_made: HashMap::new(),
         }
     }
 }
