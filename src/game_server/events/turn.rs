@@ -14,10 +14,20 @@ pub struct Turn {
     pub turn_move: TurnMove,
 }
 
+impl Turn {
+    fn team_symbol_to_string(&self) -> String {
+        self.team_symbol.map(|ts| ts.to_string()).unwrap_or("".into())
+    }
+}
+
 impl Handler<Turn> for GameServer {
     type Result = ();
 
-    #[tracing::instrument(name = "Turn", skip_all, fields(room_name, msg=?msg))]
+    #[tracing::instrument(
+        name = "Turn", 
+        skip_all, 
+        fields(room_name, player_id=%msg.id, player_move=%msg.turn_move, player_team=%msg.team_symbol_to_string())
+    )]
     fn handle(&mut self, msg: Turn, _: &mut Self::Context) -> Self::Result {
         let result_room: Option<String>;
 

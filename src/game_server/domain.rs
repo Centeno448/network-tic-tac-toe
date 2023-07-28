@@ -18,7 +18,18 @@ pub enum TurnMove {
 
 impl std::fmt::Display for TurnMove {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", &self.to_string())
+        match &self {
+            Self::LL => write!(f, "LL"),
+            Self::ML => write!(f, "ML"),
+            Self::UL => write!(f, "UL"),
+            Self::LM => write!(f, "LM"),
+            Self::MM => write!(f, "MM"),
+            Self::UM => write!(f, "UM"),
+            Self::LR => write!(f, "LR"),
+            Self::MR => write!(f, "MR"),
+            Self::UR => write!(f, "UR"),
+            Self::None => write!(f, ""),
+        }
     }
 }
 
