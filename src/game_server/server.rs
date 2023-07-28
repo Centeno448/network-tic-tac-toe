@@ -11,14 +11,7 @@ use uuid::Uuid;
 
 #[derive(Message)]
 #[rtype(result = "()")]
-pub struct Message(pub String);
-
-#[derive(Message)]
-#[rtype(result = "TeamSymbol")]
-pub struct Connect {
-    pub id: Uuid,
-    pub addr: Recipient<Message>,
-}
+pub struct ServerMessage(pub String);
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -34,7 +27,7 @@ pub struct StartGame {
 
 #[derive(Debug)]
 pub struct GameServer {
-    pub sessions: HashMap<Uuid, Recipient<Message>>,
+    pub sessions: HashMap<Uuid, Recipient<ServerMessage>>,
     pub rooms: HashMap<String, GameRoom>,
     pub visitor_count: Arc<AtomicUsize>,
 }
@@ -83,7 +76,7 @@ impl GameServer {
             for id in game_room.players.iter() {
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(id) {
-                        addr.do_send(Message(message.to_owned()));
+                        addr.do_send(ServerMessage(message.to_owned()));
                     }
                 }
             }
@@ -95,57 +88,20 @@ impl GameServer {
         if let Some(game_room) = self.rooms.get(room) {
             for id in game_room.players.iter() {
                 if let Some(addr) = self.sessions.get(id) {
-                    addr.do_send(Message(message.to_owned()));
+                    addr.do_send(ServerMessage(message.to_owned()));
                 }
             }
         }
     }
 
     /// Send message to specific user
-    pub fn send_direct_message(&self, addr: &Recipient<Message>, message: &str) {
-        addr.do_send(Message(message.to_owned()));
+    pub fn send_direct_message(&self, addr: &Recipient<ServerMessage>, message: &str) {
+        addr.do_send(ServerMessage(message.to_owned()));
     }
 }
 
 impl Actor for GameServer {
     type Context = Context<Self>;
-}
-
-impl Handler<Connect> for GameServer {
-    type Result = TeamSymbol;
-
-    #[tracing::instrument(name = "Player connect", skip_all, fields(player_session_id=%msg.id))]
-    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
-        let id = msg.id;
-
-        self.rooms
-            .entry("lobby".to_owned())
-            .or_insert_with(GameRoom::new)
-            .players
-            .insert(id);
-
-        let _ = self.visitor_count.fetch_add(1, Ordering::SeqCst);
-        let count = self.visitor_count.load(Ordering::Relaxed);
-        tracing::info!("Number of players in lobby: {count}");
-
-        let player_symbol = if self.rooms.get("lobby").unwrap().players.len() > 1 {
-            TeamSymbol::Circle
-        } else {
-            TeamSymbol::Cross
-        };
-
-        let connect_command = Commmand::new_serialized(CommandCategory::Connected, &player_symbol);
-
-        self.send_direct_message(&msg.addr, &connect_command);
-
-        let command =
-            Commmand::new_serialized(CommandCategory::PlayerConnected, msg.id.to_string());
-        self.send_message("lobby", &command, id);
-
-        self.sessions.insert(id, msg.addr);
-
-        player_symbol
-    }
 }
 
 impl Handler<Disconnect> for GameServer {

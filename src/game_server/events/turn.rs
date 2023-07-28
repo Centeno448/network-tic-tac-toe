@@ -1,8 +1,9 @@
+use actix::prelude::*;
+use uuid::Uuid;
+
 use crate::game_server::commands::{CommandCategory, Commmand};
 use crate::game_server::domain::{TeamSymbol, TurnMove};
 use crate::game_server::{GameRoomStatus, GameServer};
-use actix::prelude::*;
-use uuid::Uuid;
 
 #[derive(Message)]
 #[rtype(result = "()")]

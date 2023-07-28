@@ -17,7 +17,7 @@ impl Actor for PlayerSession {
     fn started(&mut self, ctx: &mut Self::Context) {
         let session_addr = ctx.address();
         self.game_server_addr
-            .send(game_server::Connect {
+            .send(game_server::events::Connect {
                 id: self.id,
                 addr: session_addr.recipient(),
             })
@@ -87,9 +87,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
     }
 }
 
-impl Handler<game_server::Message> for PlayerSession {
+impl Handler<game_server::ServerMessage> for PlayerSession {
     type Result = ();
-    fn handle(&mut self, msg: game_server::Message, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: game_server::ServerMessage, ctx: &mut Self::Context) -> Self::Result {
         ctx.text(msg.0);
     }
 }
