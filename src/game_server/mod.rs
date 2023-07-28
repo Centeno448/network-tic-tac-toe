@@ -4,4 +4,4 @@ pub mod events;
 mod server;
 
 pub use commands::*;
-pub use server::{Disconnect, GameRoom, GameRoomStatus, GameServer, ServerMessage, StartGame};
+pub use server::{Disconnect, GameRoom, GameRoomStatus, GameServer, ServerMessage};
