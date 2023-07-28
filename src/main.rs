@@ -1,3 +1,4 @@
+use dotenv::dotenv;
 use std::fs::File;
 use std::io::ErrorKind;
 use std::sync::Mutex;
@@ -8,6 +9,7 @@ use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     let log_file = File::create("network-tic-tac-toe.log")?;
     let subscriber = get_subscriber(
         "network-tic-tac-toe".into(),
