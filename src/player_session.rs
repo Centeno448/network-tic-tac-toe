@@ -36,7 +36,7 @@ impl Actor for PlayerSession {
 
     fn stopping(&mut self, _: &mut Self::Context) -> actix::Running {
         self.game_server_addr
-            .do_send(game_server::Disconnect { id: self.id });
+            .do_send(game_server::events::Disconnect { id: self.id });
 
         actix::Running::Stop
     }
