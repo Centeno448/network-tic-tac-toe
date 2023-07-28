@@ -7,7 +7,7 @@ use crate::game_server;
 /// Define HTTP actor
 pub struct PlayerSession {
     pub id: Uuid,
-    pub team_symbol: Option<game_server::TeamSymbol>,
+    pub team_symbol: Option<game_server::domain::TeamSymbol>,
     pub game_server_addr: Addr<game_server::GameServer>,
 }
 
@@ -62,7 +62,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                 } else if trimmed_text.starts_with("/turn") {
                     let turn_move: Vec<&str> = trimmed_text.split(' ').collect();
                     self.game_server_addr
-                        .send(game_server::Turn {
+                        .send(game_server::events::Turn {
                             id: self.id,
                             team_symbol: self.team_symbol,
                             turn_move: turn_move[1].into(),

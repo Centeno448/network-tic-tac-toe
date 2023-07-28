@@ -1,4 +1,4 @@
-use crate::game_server::{CommandCategory, Commmand, TeamSymbol, TurnMove};
+use crate::game_server::{domain::TeamSymbol, CommandCategory, Commmand};
 use actix::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
@@ -32,19 +32,11 @@ pub struct StartGame {
     pub id: Uuid,
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct Turn {
-    pub id: Uuid,
-    pub team_symbol: Option<TeamSymbol>,
-    pub turn_move: TurnMove,
-}
-
 #[derive(Debug)]
 pub struct GameServer {
-    sessions: HashMap<Uuid, Recipient<Message>>,
-    rooms: HashMap<String, GameRoom>,
-    visitor_count: Arc<AtomicUsize>,
+    pub sessions: HashMap<Uuid, Recipient<Message>>,
+    pub rooms: HashMap<String, GameRoom>,
+    pub visitor_count: Arc<AtomicUsize>,
 }
 
 #[derive(Debug)]
@@ -86,7 +78,7 @@ impl GameServer {
 
 impl GameServer {
     /// Relay message to everyone else in the room
-    fn send_message(&self, room: &str, message: &str, skip_id: Uuid) {
+    pub fn send_message(&self, room: &str, message: &str, skip_id: Uuid) {
         if let Some(game_room) = self.rooms.get(room) {
             for id in game_room.players.iter() {
                 if *id != skip_id {
@@ -99,7 +91,7 @@ impl GameServer {
     }
 
     /// Send message to all users in the room
-    fn send_message_all(&self, room: &str, message: &str) {
+    pub fn send_message_all(&self, room: &str, message: &str) {
         if let Some(game_room) = self.rooms.get(room) {
             for id in game_room.players.iter() {
                 if let Some(addr) = self.sessions.get(id) {
@@ -110,7 +102,7 @@ impl GameServer {
     }
 
     /// Send message to specific user
-    fn send_direct_message(&self, addr: &Recipient<Message>, message: &str) {
+    pub fn send_direct_message(&self, addr: &Recipient<Message>, message: &str) {
         addr.do_send(Message(message.to_owned()));
     }
 }
@@ -212,58 +204,4 @@ impl Handler<StartGame> for GameServer {
             self.send_message_all(&room_name, &command);
         }
     }
-}
-
-impl Handler<Turn> for GameServer {
-    type Result = ();
-
-    #[tracing::instrument(name = "Turn", skip_all, fields(room_name, player_id=%msg.id, turn_move=?msg.turn_move))]
-    fn handle(&mut self, msg: Turn, _: &mut Self::Context) -> Self::Result {
-        let mut result_room: Option<String> = None;
-
-        for (room_name, room) in self
-            .rooms
-            .iter_mut()
-            .filter(|(_, room)| room.status == GameRoomStatus::Started)
-        {
-            if room.players.contains(&msg.id) {
-                tracing::Span::current().record("room_name", room_name);
-
-                if !is_valid_turn(room.current_turn, msg.team_symbol) {
-                    tracing::info!("Player symbol and current turn do not match.");
-                    break;
-                }
-
-                result_room = Some(room_name.clone());
-
-                room.current_turn = if room.current_turn == TeamSymbol::Circle {
-                    TeamSymbol::Cross
-                } else {
-                    TeamSymbol::Circle
-                };
-
-                break;
-            } else {
-                tracing::info!("Player is not in any room with status started.");
-            }
-        }
-
-        if let Some(room_name) = result_room {
-            let command = Commmand::new_serialized(CommandCategory::Turn, &msg.turn_move);
-
-            self.send_message(&room_name, &command, msg.id);
-        }
-    }
-}
-
-fn is_valid_turn(current_turn: TeamSymbol, player_symbol: Option<TeamSymbol>) -> bool {
-    if player_symbol.is_none() {
-        return false;
-    }
-
-    if current_turn != player_symbol.unwrap() {
-        return false;
-    }
-
-    true
 }
