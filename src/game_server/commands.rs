@@ -4,6 +4,7 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub enum CommandCategory {
+    Connected,
     PlayerConnected,
     PlayerDisconnected,
     GameStart,
@@ -42,7 +43,7 @@ impl From<&str> for TurnMove {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Serialize)]
 pub enum TeamSymbol {
     Cross,
     Circle,

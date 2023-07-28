@@ -108,6 +108,11 @@ impl GameServer {
             }
         }
     }
+
+    /// Send message to specific user
+    fn send_direct_message(&self, addr: &Recipient<Message>, message: &str) {
+        addr.do_send(Message(message.to_owned()));
+    }
 }
 
 impl Actor for GameServer {
@@ -120,9 +125,7 @@ impl Handler<Connect> for GameServer {
     #[tracing::instrument(name = "Player connect", skip_all, fields(player_session_id=%msg.id))]
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         let id = msg.id;
-        self.sessions.insert(id, msg.addr);
 
-        // auto join session to main room
         self.rooms
             .entry("lobby".to_owned())
             .or_insert_with(GameRoom::new)
@@ -133,17 +136,23 @@ impl Handler<Connect> for GameServer {
         let count = self.visitor_count.load(Ordering::Relaxed);
         tracing::info!("Number of players in lobby: {count}");
 
-        let command = Commmand::new(CommandCategory::PlayerConnected, msg.id.to_string());
-
-        let result = serde_json::to_string(&command).unwrap_or("".into());
-
-        self.send_message("lobby", &result, id);
-
-        if self.rooms.get("lobby").unwrap().players.len() > 1 {
+        let player_symbol = if self.rooms.get("lobby").unwrap().players.len() > 1 {
             TeamSymbol::Circle
         } else {
             TeamSymbol::Cross
-        }
+        };
+
+        let connect_command = Commmand::new_serialized(CommandCategory::Connected, &player_symbol);
+
+        self.send_direct_message(&msg.addr, &connect_command);
+
+        let command =
+            Commmand::new_serialized(CommandCategory::PlayerConnected, msg.id.to_string());
+        self.send_message("lobby", &command, id);
+
+        self.sessions.insert(id, msg.addr);
+
+        player_symbol
     }
 }
 
@@ -214,7 +223,7 @@ impl Handler<Turn> for GameServer {
 
         for (room_name, room) in self
             .rooms
-            .iter()
+            .iter_mut()
             .filter(|(_, room)| room.status == GameRoomStatus::Started)
         {
             if room.players.contains(&msg.id) {
@@ -226,6 +235,12 @@ impl Handler<Turn> for GameServer {
                 }
 
                 result_room = Some(room_name.clone());
+
+                room.current_turn = if room.current_turn == TeamSymbol::Circle {
+                    TeamSymbol::Cross
+                } else {
+                    TeamSymbol::Circle
+                };
 
                 break;
             } else {
