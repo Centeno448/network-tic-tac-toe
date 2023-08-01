@@ -1,4 +1,6 @@
-use actix::prelude::*;
+use actix::dev::{MessageResponse, OneshotSender};
+
+use actix::prelude::{Actor, Context, Message, Recipient};
 use std::{
     collections::{HashMap, HashSet},
     sync::{atomic::AtomicUsize, Arc},
@@ -19,7 +21,7 @@ pub struct GameServer {
     pub visitor_count: Arc<AtomicUsize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GameRoom {
     pub players: HashSet<Uuid>,
     pub status: GameRoomStatus,
@@ -38,7 +40,22 @@ impl GameRoom {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone)]
+pub struct GameState(pub Option<GameRoom>);
+
+impl<A, M> MessageResponse<A, M> for GameState
+where
+    A: Actor,
+    M: Message<Result = GameState>,
+{
+    fn handle(self, _: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
+        if let Some(tx) = tx {
+            let _ = tx.send(self);
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum GameRoomStatus {
     Waiting,
     Started,

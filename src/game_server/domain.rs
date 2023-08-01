@@ -76,3 +76,22 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TurnMove;
+
+    #[test]
+    pub fn turn_move_deserializes_correctly() {
+        assert_eq!(Into::<TurnMove>::into("LL"), TurnMove::LL);
+        assert_eq!(Into::<TurnMove>::into("ML"), TurnMove::ML);
+        assert_eq!(Into::<TurnMove>::into("UL"), TurnMove::UL);
+        assert_eq!(Into::<TurnMove>::into("LM"), TurnMove::LM);
+        assert_eq!(Into::<TurnMove>::into("MM"), TurnMove::MM);
+        assert_eq!(Into::<TurnMove>::into("UM"), TurnMove::UM);
+        assert_eq!(Into::<TurnMove>::into("LR"), TurnMove::LR);
+        assert_eq!(Into::<TurnMove>::into("MR"), TurnMove::MR);
+        assert_eq!(Into::<TurnMove>::into("UR"), TurnMove::UR);
+        assert_eq!(Into::<TurnMove>::into("other"), TurnMove::None);
+    }
+}
