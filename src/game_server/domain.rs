@@ -79,6 +79,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::TeamSymbol;
     use super::TurnMove;
 
     #[test]
@@ -93,5 +94,25 @@ mod tests {
         assert_eq!(Into::<TurnMove>::into("MR"), TurnMove::MR);
         assert_eq!(Into::<TurnMove>::into("UR"), TurnMove::UR);
         assert_eq!(Into::<TurnMove>::into("other"), TurnMove::None);
+    }
+
+    #[test]
+    pub fn turn_move_displays_correctly() {
+        assert_eq!(format!("{}", TurnMove::LL), "LL");
+        assert_eq!(format!("{}", TurnMove::ML), "ML");
+        assert_eq!(format!("{}", TurnMove::UL), "UL");
+        assert_eq!(format!("{}", TurnMove::LM), "LM");
+        assert_eq!(format!("{}", TurnMove::MM), "MM");
+        assert_eq!(format!("{}", TurnMove::UM), "UM");
+        assert_eq!(format!("{}", TurnMove::LR), "LR");
+        assert_eq!(format!("{}", TurnMove::MR), "MR");
+        assert_eq!(format!("{}", TurnMove::UR), "UR");
+        assert_eq!(format!("{}", TurnMove::None), "");
+    }
+
+    #[test]
+    pub fn team_symbol_displays_correctly() {
+        assert_eq!(format!("{}", TeamSymbol::Circle), "Circle");
+        assert_eq!(format!("{}", TeamSymbol::Cross), "Cross");
     }
 }
