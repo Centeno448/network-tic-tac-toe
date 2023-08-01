@@ -25,8 +25,8 @@ async fn server_ignores_invalid_turn() {
     };
 
     // Act
-    let res = player_session.game_server_addr.send(turn).await;
-    let returned_game_state = res.unwrap().0;
+    let _ = player_session.game_server_addr.send(turn).await;
+
     let game_state = player_session
         .game_server_addr
         .send(GetGameState("lobby".into()))
@@ -36,7 +36,6 @@ async fn server_ignores_invalid_turn() {
         .unwrap();
 
     // Assert
-    assert!(returned_game_state.is_none());
     assert_eq!(
         game_state.current_turn,
         TeamSymbol::Cross,
@@ -45,6 +44,143 @@ async fn server_ignores_invalid_turn() {
     assert!(
         !game_state.moves_made.contains_key(&TurnMove::MM),
         "The invalid turn is not stored."
+    );
+    assert_eq!(
+        game_state.status,
+        GameRoomStatus::Started,
+        "Does not end the game."
+    );
+}
+
+#[actix_web::test]
+async fn server_ignores_duplicate_turn() {
+    // Arrange
+    let mut server = setup_game_server();
+    let player_ids = get_player_ids_from_room(&server, "lobby");
+    server
+        .rooms
+        .get_mut("lobby")
+        .unwrap()
+        .moves_made
+        .insert(TurnMove::MM, player_ids[0].clone());
+    let server_addr = server.start();
+    let player_session = PlayerSession {
+        id: player_ids[0],
+        team_symbol: Some(TeamSymbol::Cross),
+        game_server_addr: server_addr,
+    };
+    let turn = Turn {
+        id: player_session.id,
+        team_symbol: player_session.team_symbol,
+        turn_move: TurnMove::MM,
+    };
+
+    // Act
+    let _ = player_session.game_server_addr.send(turn).await;
+
+    let game_state = player_session
+        .game_server_addr
+        .send(GetGameState("lobby".into()))
+        .await
+        .unwrap()
+        .0
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        game_state.current_turn,
+        TeamSymbol::Cross,
+        "The current turn does not change."
+    );
+    assert_eq!(
+        game_state.status,
+        GameRoomStatus::Started,
+        "Does not end the game."
+    );
+}
+
+#[actix_web::test]
+async fn server_ignores_invalid_player() {
+    // Arrange
+    let server = setup_game_server();
+    let player_ids = get_player_ids_from_room(&server, "lobby");
+    let server_addr = server.start();
+    let player_session = PlayerSession {
+        id: player_ids[0],
+        team_symbol: Some(TeamSymbol::Cross),
+        game_server_addr: server_addr,
+    };
+    let turn = Turn {
+        id: uuid::Uuid::new_v4(),
+        team_symbol: player_session.team_symbol,
+        turn_move: TurnMove::MM,
+    };
+
+    // Act
+    let _ = player_session.game_server_addr.send(turn).await;
+
+    let game_state = player_session
+        .game_server_addr
+        .send(GetGameState("lobby".into()))
+        .await
+        .unwrap()
+        .0
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        game_state.current_turn,
+        TeamSymbol::Cross,
+        "The current turn does not change."
+    );
+    assert!(
+        !game_state.moves_made.contains_key(&TurnMove::MM),
+        "The move from the invalid player is not stored."
+    );
+    assert_eq!(
+        game_state.status,
+        GameRoomStatus::Started,
+        "Does not end the game."
+    );
+}
+
+#[actix_web::test]
+async fn server_processes_valid_turn() {
+    // Arrange
+    let server = setup_game_server();
+    let player_ids = get_player_ids_from_room(&server, "lobby");
+    let server_addr = server.start();
+    let player_session = PlayerSession {
+        id: player_ids[0],
+        team_symbol: Some(TeamSymbol::Cross),
+        game_server_addr: server_addr,
+    };
+    let turn = Turn {
+        id: player_session.id,
+        team_symbol: player_session.team_symbol,
+        turn_move: TurnMove::MM,
+    };
+
+    // Act
+    let _ = player_session.game_server_addr.send(turn).await;
+
+    let game_state = player_session
+        .game_server_addr
+        .send(GetGameState("lobby".into()))
+        .await
+        .unwrap()
+        .0
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        game_state.current_turn,
+        TeamSymbol::Circle,
+        "The current turn changes."
+    );
+    assert!(
+        game_state.moves_made.contains_key(&TurnMove::MM),
+        "The move is stored."
     );
     assert_eq!(
         game_state.status,
