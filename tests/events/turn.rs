@@ -5,12 +5,12 @@ use network_tic_tac_toe::game_server::events::{GetGameState, Turn};
 use network_tic_tac_toe::game_server::GameRoomStatus;
 use network_tic_tac_toe::player_session::PlayerSession;
 
-use crate::helpers::{get_player_ids_from_room, setup_game_server};
+use crate::helpers::{get_player_ids_from_room, setup_game_server_with_status};
 
 #[actix_web::test]
 async fn server_ignores_invalid_turn() {
     // Arrange
-    let server = setup_game_server();
+    let server = setup_game_server_with_status(GameRoomStatus::Started);
     let player_ids = get_player_ids_from_room(&server, "lobby");
     let server_addr = server.start();
     let player_session = PlayerSession {
@@ -55,7 +55,7 @@ async fn server_ignores_invalid_turn() {
 #[actix_web::test]
 async fn server_ignores_duplicate_turn() {
     // Arrange
-    let mut server = setup_game_server();
+    let mut server = setup_game_server_with_status(GameRoomStatus::Started);
     let player_ids = get_player_ids_from_room(&server, "lobby");
     server
         .rooms
@@ -102,7 +102,7 @@ async fn server_ignores_duplicate_turn() {
 #[actix_web::test]
 async fn server_ignores_invalid_player() {
     // Arrange
-    let server = setup_game_server();
+    let server = setup_game_server_with_status(GameRoomStatus::Started);
     let player_ids = get_player_ids_from_room(&server, "lobby");
     let server_addr = server.start();
     let player_session = PlayerSession {
@@ -147,7 +147,7 @@ async fn server_ignores_invalid_player() {
 #[actix_web::test]
 async fn server_processes_valid_turn() {
     // Arrange
-    let server = setup_game_server();
+    let server = setup_game_server_with_status(GameRoomStatus::Started);
     let player_ids = get_player_ids_from_room(&server, "lobby");
     let server_addr = server.start();
     let player_session = PlayerSession {

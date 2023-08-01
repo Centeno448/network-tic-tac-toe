@@ -36,10 +36,10 @@ pub fn setup_empty_game_server() -> GameServer {
     GameServer::new(visitors)
 }
 
-pub fn setup_game_server() -> GameServer {
+pub fn setup_game_server_with_status(status: GameRoomStatus) -> GameServer {
     let mut server = setup_empty_game_server();
 
-    server.rooms.get_mut("lobby").unwrap().status = GameRoomStatus::Started;
+    server.rooms.get_mut("lobby").unwrap().status = status;
     server
         .rooms
         .get_mut("lobby")
