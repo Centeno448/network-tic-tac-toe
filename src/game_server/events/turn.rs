@@ -56,7 +56,9 @@ impl Handler<Turn> for GameServer {
 
             is_tie = is_game_tie(&is_victory, &room);
 
-            change_turn(room);
+            if !is_victory && !is_tie {
+                change_turn(room);
+            }
         } else {
             tracing::info!("Player is not in any room with status started.");
             return;
@@ -69,13 +71,23 @@ impl Handler<Turn> for GameServer {
 
             if is_victory {
                 tracing::info!("Game ended in victory");
-                self.rooms.get_mut(&room_name).unwrap().status = GameRoomStatus::Finished;
-                let command = Commmand::new_serialized(CommandCategory::GameOver, "victory");
+                let room = self.rooms.get_mut(&room_name).unwrap();
+                room.status = GameRoomStatus::Finished;
+
+                let response = serde_json::json!({
+                    "outcome": "victory",
+                    "winner": &room.current_turn
+                });
+
+                let command = Commmand::new_serialized(CommandCategory::GameOver, response);
                 self.send_message_all(&room_name, &command);
             } else if is_tie {
                 tracing::info!("Game ended in tie");
                 self.rooms.get_mut(&room_name).unwrap().status = GameRoomStatus::Finished;
-                let command = Commmand::new_serialized(CommandCategory::GameOver, "tie");
+                let response = serde_json::json!({
+                    "outcome": "tie"
+                });
+                let command = Commmand::new_serialized(CommandCategory::GameOver, response);
                 self.send_message_all(&room_name, &command);
             }
         }
