@@ -59,6 +59,7 @@ where
 pub enum GameRoomStatus {
     Waiting,
     Started,
+    Finished,
 }
 
 impl GameServer {

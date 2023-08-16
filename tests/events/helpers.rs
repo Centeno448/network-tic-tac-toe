@@ -1,4 +1,5 @@
 use actix::{Actor, Context, Handler};
+use network_tic_tac_toe::game_server::domain::{TeamSymbol, TurnMove};
 use network_tic_tac_toe::game_server::{GameRoomStatus, GameServer, ServerMessage};
 use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
 use once_cell::sync::Lazy;
@@ -70,4 +71,62 @@ pub fn setup_game_server_with_status(status: GameRoomStatus) -> GameServer {
         .insert(Uuid::new_v4());
 
     server
+}
+
+pub fn setup_game_for_tie(game_server: &mut GameServer, player_one: Uuid, player_two: Uuid) {
+    let room = game_server.rooms.get_mut("lobby").unwrap();
+
+    room.moves_made.insert(TurnMove::LL, player_one);
+    room.moves_made.insert(TurnMove::LR, player_one);
+    room.moves_made.insert(TurnMove::MM, player_one);
+    room.moves_made.insert(TurnMove::UM, player_one);
+    room.moves_made.insert(TurnMove::LM, player_two);
+    room.moves_made.insert(TurnMove::UL, player_two);
+    room.moves_made.insert(TurnMove::UR, player_two);
+    room.moves_made.insert(TurnMove::MR, player_two);
+}
+
+pub fn setup_game_for_diagonal_victory(
+    game_server: &mut GameServer,
+    player_one: &Uuid,
+    player_two: &Uuid,
+) {
+    let room = game_server.rooms.get_mut("lobby").unwrap();
+
+    room.moves_made.insert(TurnMove::LL, player_one.clone());
+    room.moves_made.insert(TurnMove::MM, player_one.clone());
+
+    room.moves_made.insert(TurnMove::LM, player_two.clone());
+    room.moves_made.insert(TurnMove::LR, player_two.clone());
+}
+
+pub fn setup_game_for_cross_victory(
+    game_server: &mut GameServer,
+    player_one: &Uuid,
+    player_two: &Uuid,
+) {
+    let room = game_server.rooms.get_mut("lobby").unwrap();
+
+    room.moves_made.insert(TurnMove::LL, player_one.clone());
+    room.moves_made.insert(TurnMove::LM, player_one.clone());
+
+    room.moves_made.insert(TurnMove::UL, player_two.clone());
+    room.moves_made.insert(TurnMove::UM, player_two.clone());
+}
+
+pub fn setup_game_for_circle_victory(
+    game_server: &mut GameServer,
+    player_one: &Uuid,
+    player_two: &Uuid,
+) {
+    let room = game_server.rooms.get_mut("lobby").unwrap();
+
+    room.current_turn = TeamSymbol::Circle;
+
+    room.moves_made.insert(TurnMove::LL, player_one.clone());
+    room.moves_made.insert(TurnMove::MM, player_one.clone());
+    room.moves_made.insert(TurnMove::ML, player_one.clone());
+
+    room.moves_made.insert(TurnMove::LR, player_two.clone());
+    room.moves_made.insert(TurnMove::MR, player_two.clone());
 }

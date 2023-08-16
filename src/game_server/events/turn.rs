@@ -32,6 +32,8 @@ impl Handler<Turn> for GameServer {
     )]
     fn handle(&mut self, msg: Turn, _: &mut Self::Context) -> Self::Result {
         let result_room: Option<String>;
+        let is_victory;
+        let is_tie;
 
         if let Some((room_name, room)) = find_started_room_by_player_id(self, &msg.id) {
             tracing::Span::current().record("room_name", room_name);
@@ -50,6 +52,10 @@ impl Handler<Turn> for GameServer {
 
             room.moves_made.insert(msg.turn_move.clone(), msg.id);
 
+            is_victory = is_player_victory(&room, &msg.id, &msg.turn_move);
+
+            is_tie = is_game_tie(&is_victory, &room);
+
             change_turn(room);
         } else {
             tracing::info!("Player is not in any room with status started.");
@@ -60,6 +66,18 @@ impl Handler<Turn> for GameServer {
             let command = Commmand::new_serialized(CommandCategory::Turn, msg.turn_move);
 
             self.send_message(&room_name, &command, msg.id);
+
+            if is_victory {
+                tracing::info!("Game ended in victory");
+                self.rooms.get_mut(&room_name).unwrap().status = GameRoomStatus::Finished;
+                let command = Commmand::new_serialized(CommandCategory::GameOver, "victory");
+                self.send_message_all(&room_name, &command);
+            } else if is_tie {
+                tracing::info!("Game ended in tie");
+                self.rooms.get_mut(&room_name).unwrap().status = GameRoomStatus::Finished;
+                let command = Commmand::new_serialized(CommandCategory::GameOver, "tie");
+                self.send_message_all(&room_name, &command);
+            }
         }
     }
 }
@@ -96,4 +114,53 @@ fn is_invalid_turn(current_turn: TeamSymbol, player_symbol: Option<TeamSymbol>) 
     }
 
     false
+}
+
+fn is_player_victory(game_room: &GameRoom, player_id: &Uuid, player_move: &TurnMove) -> bool {
+    let player_moves: Vec<&TurnMove> = game_room
+        .moves_made
+        .iter()
+        .filter(|(_, v)| *v == player_id)
+        .map(|(k, _)| k)
+        .collect();
+
+    let player_move = player_move.to_string();
+    let mut move_iter = player_move.chars();
+
+    let row = move_iter.next().unwrap_or(' ');
+    let column = move_iter.next().unwrap_or(' ');
+
+    let is_row_victory = player_moves
+        .iter()
+        .filter(|pm| pm.to_string().starts_with(row))
+        .count();
+
+    let is_column_victory = player_moves
+        .iter()
+        .filter(|pm| pm.to_string().ends_with(column))
+        .count();
+
+    if is_row_victory == 3 || is_column_victory == 3 {
+        return true;
+    }
+
+    let is_diagonal_victory = player_moves
+        .iter()
+        .filter(|pm| ***pm == TurnMove::LL || ***pm == TurnMove::MM || ***pm == TurnMove::UR)
+        .count()
+        == 3;
+
+    if is_diagonal_victory {
+        return true;
+    }
+
+    false
+}
+
+fn is_game_tie(is_player_victory: &bool, game_room: &GameRoom) -> bool {
+    if *is_player_victory {
+        return false;
+    }
+
+    game_room.moves_made.iter().count() == 9
 }
