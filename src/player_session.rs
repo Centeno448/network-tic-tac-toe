@@ -49,7 +49,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                 let trimmed_text = text.trim();
                 if trimmed_text.starts_with("/start") {
                     self.game_server_addr
-                        .send(game_server::events::StartGame { id: self.id })
+                        .send(game_server::events::StartGame {
+                            id: self.id,
+                            team_symbol: self.team_symbol,
+                        })
                         .into_actor(self)
                         .then(|res, _, ctx| {
                             match res {
