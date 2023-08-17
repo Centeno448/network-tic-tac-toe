@@ -1,10 +1,18 @@
 use actix::{Actor, Context, Handler};
-use network_tic_tac_toe::game_server::domain::{TeamSymbol, TurnMove};
-use network_tic_tac_toe::game_server::{GameRoomStatus, GameServer, ServerMessage};
-use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
+use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 use std::sync::{atomic::AtomicUsize, Arc};
+use tokio::net::TcpStream;
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use url::Url;
 use uuid::Uuid;
+
+use network_tic_tac_toe::configuration::get_configuration;
+use network_tic_tac_toe::game_server::domain::{TeamSymbol, TurnMove};
+use network_tic_tac_toe::game_server::{GameRoomStatus, GameServer, ServerMessage};
+use network_tic_tac_toe::startup::Application;
+use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info".to_string();
@@ -34,6 +42,49 @@ impl Actor for MockPlayerSession {
 impl Handler<ServerMessage> for MockPlayerSession {
     type Result = ();
     fn handle(&mut self, _: ServerMessage, _: &mut Self::Context) -> Self::Result {}
+}
+
+pub struct TestApp {
+    pub address: String,
+}
+
+pub async fn spawn_app() -> TestApp {
+    Lazy::force(&TRACING);
+
+    let configuration = {
+        let mut c = get_configuration().expect("Failed to read configuration.");
+        // use random port
+        c.port = 0;
+
+        c
+    };
+
+    let application = Application::build(configuration.clone())
+        .await
+        .expect("Failed to build application");
+
+    let address = format!("ws://{}:{}", configuration.host, application.port());
+    let _ = tokio::spawn(application.run_until_stopped());
+
+    TestApp { address }
+}
+
+impl TestApp {
+    pub async fn connect_player(&self) -> WebSocketStream<MaybeTlsStream<TcpStream>> {
+        let (socket, _) = connect_async(Url::parse(&self.address).unwrap())
+            .await
+            .expect("Failed to connect");
+
+        socket
+    }
+}
+
+pub async fn process_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>) -> Message {
+    socket
+        .next()
+        .await
+        .expect("Failed to fetch response")
+        .unwrap()
 }
 
 pub fn get_player_ids_from_room(game_server: &GameServer, room_name: &str) -> Vec<Uuid> {
