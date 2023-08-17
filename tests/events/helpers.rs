@@ -1,4 +1,4 @@
-use futures_util::{FutureExt, SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt};
 use once_cell::sync::Lazy;
 use std::sync::{atomic::AtomicUsize, Arc};
 use std::time::Duration;
