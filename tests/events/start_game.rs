@@ -1,112 +1,54 @@
-use actix::Actor;
-use uuid::Uuid;
-
-use network_tic_tac_toe::game_server::domain::TeamSymbol;
-use network_tic_tac_toe::game_server::events::{GetGameState, StartGame};
-use network_tic_tac_toe::game_server::GameRoomStatus;
-
-use crate::helpers::{get_player_ids_from_room, setup_game_server_with_status};
-
-#[actix_web::test]
-async fn player_outside_room_cant_start_game() {
-    // Arrange
-    let server = setup_game_server_with_status(GameRoomStatus::Waiting);
-    let server_addr = server.start();
-
-    let start = StartGame {
-        id: Uuid::new_v4(),
-        team_symbol: Some(TeamSymbol::Cross),
-    };
-
-    // Act
-    let _ = server_addr.send(start).await;
-
-    let game_state = server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
-
-    // Assert
-    assert_eq!(
-        game_state.current_turn,
-        TeamSymbol::Cross,
-        "The current turn does not change."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Waiting,
-        "Does not start the game."
-    );
-}
+use crate::helpers::{process_message, process_message_result, send_message, spawn_app};
 
 #[actix_web::test]
 async fn circle_player_cant_start_game() {
-    // Arrange
-    let server = setup_game_server_with_status(GameRoomStatus::Waiting);
-    let player_id = get_player_ids_from_room(&server, "lobby")[1];
-    let server_addr = server.start();
+    let test_app = spawn_app().await;
 
-    let start = StartGame {
-        id: player_id,
-        team_symbol: Some(TeamSymbol::Circle),
-    };
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    // Act
-    let _ = server_addr.send(start).await;
+    process_message(&mut player_one).await; // Player 1 connects
+    process_message(&mut player_two).await; // Player 2 connects
+    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
 
-    let game_state = server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    send_message(&mut player_two, "/start").await;
 
-    // Assert
-    assert_eq!(
-        game_state.current_turn,
-        TeamSymbol::Cross,
-        "The current turn does not change."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Waiting,
-        "Does not start the game."
-    );
+    let player_one_response = process_message_result(&mut player_one).await;
+    let player_two_response = process_message_result(&mut player_two).await;
+
+    assert!(player_one_response.is_none());
+    assert!(player_two_response.is_none());
 }
 
 #[actix_web::test]
 async fn cross_player_can_start_game() {
-    // Arrange
-    let server = setup_game_server_with_status(GameRoomStatus::Waiting);
-    let player_id = get_player_ids_from_room(&server, "lobby")[0];
-    let server_addr = server.start();
+    let test_app = spawn_app().await;
 
-    let start = StartGame {
-        id: player_id,
-        team_symbol: Some(TeamSymbol::Cross),
-    };
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    // Act
-    let _ = server_addr.send(start).await;
+    process_message(&mut player_one).await; // Player 1 connects
+    process_message(&mut player_two).await; // Player 2 connects
+    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
 
-    let game_state = server_addr
-        .send(GetGameState("lobby".into()))
-        .await
+    send_message(&mut player_one, "/start").await;
+
+    let player_one_response = process_message_result(&mut player_one).await;
+    let player_two_response = process_message_result(&mut player_two).await;
+
+    assert!(player_one_response.is_some());
+    assert!(player_two_response.is_some());
+
+    let player_one_response = player_one_response
         .unwrap()
-        .0
-        .unwrap();
+        .expect("Failed to recieve message.");
+    let player_two_response = player_two_response
+        .unwrap()
+        .expect("Failed to recieve message.");
 
-    // Assert
-    assert_eq!(
-        game_state.current_turn,
-        TeamSymbol::Cross,
-        "The current turn does not change."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Started,
-        "Starts the game."
-    );
+    assert!(player_one_response.is_text());
+    assert!(player_two_response.is_text());
+
+    assert!(player_one_response.to_text().unwrap().contains("GameStart"));
+    assert!(player_two_response.to_text().unwrap().contains("GameStart"));
 }

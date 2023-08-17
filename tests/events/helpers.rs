@@ -1,8 +1,9 @@
-use actix::{Actor, Context, Handler};
-use futures_util::StreamExt;
+use futures_util::{FutureExt, SinkExt, StreamExt};
 use once_cell::sync::Lazy;
 use std::sync::{atomic::AtomicUsize, Arc};
+use std::time::Duration;
 use tokio::net::TcpStream;
+use tokio::time::timeout;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use url::Url;
@@ -10,7 +11,7 @@ use uuid::Uuid;
 
 use network_tic_tac_toe::configuration::get_configuration;
 use network_tic_tac_toe::game_server::domain::{TeamSymbol, TurnMove};
-use network_tic_tac_toe::game_server::{GameRoomStatus, GameServer, ServerMessage};
+use network_tic_tac_toe::game_server::{GameRoomStatus, GameServer};
 use network_tic_tac_toe::startup::Application;
 use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
 
@@ -26,23 +27,6 @@ static TRACING: Lazy<()> = Lazy::new(|| {
         init_subscriber(subscriber);
     }
 });
-
-pub struct MockPlayerSession;
-
-impl MockPlayerSession {
-    pub fn new() -> Self {
-        MockPlayerSession
-    }
-}
-
-impl Actor for MockPlayerSession {
-    type Context = Context<Self>;
-}
-
-impl Handler<ServerMessage> for MockPlayerSession {
-    type Result = ();
-    fn handle(&mut self, _: ServerMessage, _: &mut Self::Context) -> Self::Result {}
-}
 
 pub struct TestApp {
     pub address: String,
@@ -85,6 +69,21 @@ pub async fn process_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStre
         .await
         .expect("Failed to fetch response")
         .unwrap()
+}
+
+pub async fn process_message_result(
+    socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+) -> Option<Result<Message, tokio_tungstenite::tungstenite::Error>> {
+    timeout(Duration::from_millis(10), socket.next())
+        .await
+        .unwrap_or_else(|_| None)
+}
+
+pub async fn send_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>, msg: &str) {
+    socket
+        .send(Message::Text(msg.into()))
+        .await
+        .expect("Failed to send message.")
 }
 
 pub fn get_player_ids_from_room(game_server: &GameServer, room_name: &str) -> Vec<Uuid> {
