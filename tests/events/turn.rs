@@ -1,357 +1,189 @@
-use actix::Actor;
-
-use network_tic_tac_toe::game_server::domain::{TeamSymbol, TurnMove};
-use network_tic_tac_toe::game_server::events::{GetGameState, Turn};
-use network_tic_tac_toe::game_server::GameRoomStatus;
-use network_tic_tac_toe::player_session::PlayerSession;
-
-use crate::helpers::{
-    get_player_ids_from_room, setup_game_for_circle_victory, setup_game_for_cross_victory,
-    setup_game_for_diagonal_victory, setup_game_for_tie, setup_game_server_with_status,
-};
+use crate::helpers::*;
 
 #[actix_web::test]
 async fn server_ignores_invalid_turn() {
-    // Arrange
-    let server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[0],
-        team_symbol: Some(TeamSymbol::Circle),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: player_session.id,
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::MM,
-    };
+    let test_app = spawn_app().await;
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    process_message(&mut player_one).await; // Player 1 connects
+    process_message(&mut player_two).await; // Player 2 connects
+    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
 
-    // Assert
-    assert_eq!(
-        game_state.current_turn,
-        TeamSymbol::Cross,
-        "The current turn does not change."
-    );
+    send_message(&mut player_one, "/start").await; // Game start
+
+    process_message(&mut player_one).await; // Player 1 recieves game start
+    process_message(&mut player_two).await; // Player 2 recieves game start
+
+    send_message(&mut player_two, "/turn MM").await; // Invalid turn
+
+    let player_one_response = process_message_result(&mut player_one).await;
+
     assert!(
-        !game_state.moves_made.contains_key(&TurnMove::MM),
-        "The invalid turn is not stored."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Started,
-        "Does not end the game."
+        player_one_response.is_none(),
+        "Invalid turn is not notified to player one"
     );
 }
 
 #[actix_web::test]
 async fn server_ignores_duplicate_turn() {
-    // Arrange
-    let mut server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    server
-        .rooms
-        .get_mut("lobby")
-        .unwrap()
-        .moves_made
-        .insert(TurnMove::MM, player_ids[0].clone());
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[0],
-        team_symbol: Some(TeamSymbol::Cross),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: player_session.id,
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::MM,
-    };
+    let test_app = spawn_app().await;
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    process_message(&mut player_one).await; // Player 1 connects
+    process_message(&mut player_two).await; // Player 2 connects
+    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
 
-    // Assert
-    assert_eq!(
-        game_state.current_turn,
-        TeamSymbol::Cross,
-        "The current turn does not change."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Started,
-        "Does not end the game."
-    );
-}
+    send_message(&mut player_one, "/start").await; // Game start
 
-#[actix_web::test]
-async fn server_ignores_invalid_player() {
-    // Arrange
-    let server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[0],
-        team_symbol: Some(TeamSymbol::Cross),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: uuid::Uuid::new_v4(),
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::MM,
-    };
+    process_message(&mut player_one).await; // Player 1 recieves game start
+    process_message(&mut player_two).await; // Player 2 recieves game start
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    send_message(&mut player_one, "/turn MM").await; // Player 1 turn
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    process_message(&mut player_two).await; // Player 2 recieves turn
 
-    // Assert
-    assert_eq!(
-        game_state.current_turn,
-        TeamSymbol::Cross,
-        "The current turn does not change."
-    );
+    send_message(&mut player_one, "/turn MM").await; // Player 2 duplicate turn
+
+    let player_one_response = process_message_result(&mut player_one).await;
+
     assert!(
-        !game_state.moves_made.contains_key(&TurnMove::MM),
-        "The move from the invalid player is not stored."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Started,
-        "Does not end the game."
+        player_one_response.is_none(),
+        "Duplicate turn is not notified to player one"
     );
 }
 
 #[actix_web::test]
 async fn server_processes_valid_turn() {
-    // Arrange
-    let server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[0],
-        team_symbol: Some(TeamSymbol::Cross),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: player_session.id,
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::MM,
-    };
+    let test_app = spawn_app().await;
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    process_message(&mut player_one).await; // Player 1 connects
+    process_message(&mut player_two).await; // Player 2 connects
+    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
 
-    // Assert
-    assert_eq!(
-        game_state.current_turn,
-        TeamSymbol::Circle,
-        "The current turn changes."
+    send_message(&mut player_one, "/start").await; // Game start
+
+    process_message(&mut player_one).await; // Player 1 recieves game start
+    process_message(&mut player_two).await; // Player 2 recieves game start
+
+    send_message(&mut player_one, "/turn MM").await; // Player 1 turn
+
+    let player_two_msg = process_message_result(&mut player_two).await; // Player 2 recieves turn
+
+    send_message(&mut player_two, "/turn LL").await; // Player 2 turn
+
+    let player_one_msg = process_message_result(&mut player_one).await; // Player 1 recieves turn
+
+    assert!(player_two_msg.is_some());
+    assert!(player_one_msg.is_some());
+
+    let player_two_msg = player_two_msg.unwrap().expect("Failed to recieve message");
+    let player_one_msg = player_one_msg.unwrap().expect("Failed to recieve message");
+
+    assert!(
+        player_two_msg.into_text().unwrap().contains("MM"),
+        "Player one turn is notified to player two"
     );
     assert!(
-        game_state.moves_made.contains_key(&TurnMove::MM),
-        "The move is stored."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Started,
-        "Does not end the game."
+        player_one_msg.into_text().unwrap().contains("LL"),
+        "Player two turn is notified to player one"
     );
 }
 
 #[actix_web::test]
 async fn game_ends_on_tie() {
-    // Arrange
-    let mut server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    setup_game_for_tie(&mut server, player_ids[0], player_ids[1]);
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[0],
-        team_symbol: Some(TeamSymbol::Cross),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: player_session.id,
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::ML,
-    };
+    let test_app = spawn_app().await;
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    setup_game_for_tie(&mut player_one, &mut player_two).await;
 
-    // Assert
-    assert!(
-        game_state.moves_made.contains_key(&TurnMove::ML),
-        "The move is stored."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Finished,
-        "Ends the game."
-    );
+    send_message(&mut player_one, "/turn ML").await; // Final turn
+    process_message(&mut player_two).await; // Player 2 recieves final turn
+
+    let player_one_msg = process_message(&mut player_one).await;
+    let player_two_msg = process_message(&mut player_two).await;
+
+    let player_one_msg = player_one_msg.to_text().unwrap();
+    let player_two_msg = player_two_msg.to_text().unwrap();
+
+    assert!(player_one_msg.contains(r#""outcome":"tie""#));
+
+    assert!(player_two_msg.contains(r#""outcome":"tie""#));
 }
 
 #[actix_web::test]
 async fn game_ends_on_diagonal_victory() {
-    // Arrange
-    let mut server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    setup_game_for_diagonal_victory(&mut server, &player_ids[0], &player_ids[1]);
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[0],
-        team_symbol: Some(TeamSymbol::Cross),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: player_session.id,
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::UR,
-    };
+    let test_app = spawn_app().await;
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    setup_game_for_diagonal_victory(&mut player_one, &mut player_two).await;
 
-    // Assert
-    assert!(
-        game_state.moves_made.contains_key(&TurnMove::UR),
-        "The move is stored."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Finished,
-        "Ends the game."
-    );
+    send_message(&mut player_one, "/turn UR").await; // Final turn
+    process_message(&mut player_two).await; // Player 2 recieves final turn
+
+    let player_one_msg = process_message(&mut player_one).await;
+    let player_two_msg = process_message(&mut player_two).await;
+
+    let player_one_msg = player_one_msg.to_text().unwrap();
+    let player_two_msg = player_two_msg.to_text().unwrap();
+
+    assert!(player_one_msg.contains(r#""outcome":"victory","winner":"Cross""#));
+
+    assert!(player_two_msg.contains(r#""outcome":"victory","winner":"Cross""#));
 }
 
 #[actix_web::test]
 async fn game_ends_on_cross_victory() {
-    // Arrange
-    let mut server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    setup_game_for_cross_victory(&mut server, &player_ids[0], &player_ids[1]);
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[0],
-        team_symbol: Some(TeamSymbol::Cross),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: player_session.id,
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::LR,
-    };
+    let test_app = spawn_app().await;
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    setup_game_for_cross_victory(&mut player_one, &mut player_two).await;
 
-    // Assert
-    assert!(
-        game_state.moves_made.contains_key(&TurnMove::LR),
-        "The move is stored."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Finished,
-        "Ends the game."
-    );
+    send_message(&mut player_one, "/turn LR").await; // Final turn
+    process_message(&mut player_two).await; // Player 2 recieves final turn
+
+    let player_one_msg = process_message(&mut player_one).await;
+    let player_two_msg = process_message(&mut player_two).await;
+
+    let player_one_msg = player_one_msg.to_text().unwrap();
+    let player_two_msg = player_two_msg.to_text().unwrap();
+
+    assert!(player_one_msg.contains(r#""outcome":"victory","winner":"Cross""#));
+
+    assert!(player_two_msg.contains(r#""outcome":"victory","winner":"Cross""#));
 }
 
 #[actix_web::test]
 async fn game_ends_on_circle_victory() {
-    // Arrange
-    let mut server = setup_game_server_with_status(GameRoomStatus::Started);
-    let player_ids = get_player_ids_from_room(&server, "lobby");
-    setup_game_for_circle_victory(&mut server, &player_ids[0], &player_ids[1]);
-    let server_addr = server.start();
-    let player_session = PlayerSession {
-        id: player_ids[1],
-        team_symbol: Some(TeamSymbol::Circle),
-        game_server_addr: server_addr,
-    };
-    let turn = Turn {
-        id: player_session.id,
-        team_symbol: player_session.team_symbol,
-        turn_move: TurnMove::UR,
-    };
+    let test_app = spawn_app().await;
 
-    // Act
-    let _ = player_session.game_server_addr.send(turn).await;
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
 
-    let game_state = player_session
-        .game_server_addr
-        .send(GetGameState("lobby".into()))
-        .await
-        .unwrap()
-        .0
-        .unwrap();
+    setup_game_for_circle_victory(&mut player_one, &mut player_two).await;
 
-    // Assert
-    assert!(
-        game_state.moves_made.contains_key(&TurnMove::UR),
-        "The move is stored."
-    );
-    assert_eq!(
-        game_state.status,
-        GameRoomStatus::Finished,
-        "Ends the game."
-    );
+    send_message(&mut player_two, "/turn UR").await; // Final turn
+    process_message(&mut player_one).await; // Player 1 recieves final turn
+
+    let player_one_msg = process_message(&mut player_one).await;
+    let player_two_msg = process_message(&mut player_two).await;
+
+    let player_one_msg = player_one_msg.to_text().unwrap();
+    let player_two_msg = player_two_msg.to_text().unwrap();
+
+    assert!(player_one_msg.contains(r#""outcome":"victory","winner":"Circle""#));
+
+    assert!(player_two_msg.contains(r#""outcome":"victory","winner":"Circle""#));
 }
