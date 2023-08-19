@@ -7,14 +7,7 @@ async fn server_ignores_invalid_turn() {
     let mut player_one = test_app.connect_player().await;
     let mut player_two = test_app.connect_player().await;
 
-    process_message(&mut player_one).await; // Player 1 connects
-    process_message(&mut player_two).await; // Player 2 connects
-    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
-
-    send_message(&mut player_one, "/start").await; // Game start
-
-    process_message(&mut player_one).await; // Player 1 recieves game start
-    process_message(&mut player_two).await; // Player 2 recieves game start
+    setup_and_start_game(&mut player_one, &mut player_two).await;
 
     send_message(&mut player_two, "/turn MM").await; // Invalid turn
 
@@ -33,14 +26,7 @@ async fn server_ignores_duplicate_turn() {
     let mut player_one = test_app.connect_player().await;
     let mut player_two = test_app.connect_player().await;
 
-    process_message(&mut player_one).await; // Player 1 connects
-    process_message(&mut player_two).await; // Player 2 connects
-    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
-
-    send_message(&mut player_one, "/start").await; // Game start
-
-    process_message(&mut player_one).await; // Player 1 recieves game start
-    process_message(&mut player_two).await; // Player 2 recieves game start
+    setup_and_start_game(&mut player_one, &mut player_two).await;
 
     send_message(&mut player_one, "/turn MM").await; // Player 1 turn
 
@@ -63,14 +49,7 @@ async fn server_processes_valid_turn() {
     let mut player_one = test_app.connect_player().await;
     let mut player_two = test_app.connect_player().await;
 
-    process_message(&mut player_one).await; // Player 1 connects
-    process_message(&mut player_two).await; // Player 2 connects
-    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
-
-    send_message(&mut player_one, "/start").await; // Game start
-
-    process_message(&mut player_one).await; // Player 1 recieves game start
-    process_message(&mut player_two).await; // Player 2 recieves game start
+    setup_and_start_game(&mut player_one, &mut player_two).await;
 
     send_message(&mut player_one, "/turn MM").await; // Player 1 turn
 

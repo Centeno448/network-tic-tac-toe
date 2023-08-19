@@ -82,7 +82,7 @@ pub async fn send_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>
         .expect("Failed to send message.")
 }
 
-pub async fn setup_game_for_tie(
+pub async fn setup_and_start_game(
     mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) {
@@ -94,6 +94,13 @@ pub async fn setup_game_for_tie(
 
     process_message(&mut player_one).await; // Player 1 recieves game start
     process_message(&mut player_two).await; // Player 2 recieves game start
+}
+
+pub async fn setup_game_for_tie(
+    mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+    mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+) {
+    setup_and_start_game(player_one, player_two).await;
 
     send_message(&mut player_one, "/turn LL").await; // Player 1 turn
     process_message(&mut player_two).await;
@@ -120,14 +127,7 @@ pub async fn setup_game_for_diagonal_victory(
     mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) {
-    process_message(&mut player_one).await; // Player 1 connects
-    process_message(&mut player_two).await; // Player 2 connects
-    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
-
-    send_message(&mut player_one, "/start").await; // Game start
-
-    process_message(&mut player_one).await; // Player 1 recieves game start
-    process_message(&mut player_two).await; // Player 2 recieves game start
+    setup_and_start_game(player_one, player_two).await;
 
     send_message(&mut player_one, "/turn LL").await; // Player 1 turn
     process_message(&mut player_two).await;
@@ -144,14 +144,7 @@ pub async fn setup_game_for_cross_victory(
     mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) {
-    process_message(&mut player_one).await; // Player 1 connects
-    process_message(&mut player_two).await; // Player 2 connects
-    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
-
-    send_message(&mut player_one, "/start").await; // Game start
-
-    process_message(&mut player_one).await; // Player 1 recieves game start
-    process_message(&mut player_two).await; // Player 2 recieves game start
+    setup_and_start_game(player_one, player_two).await;
 
     send_message(&mut player_one, "/turn LL").await; // Player 1 turn
     process_message(&mut player_two).await;
@@ -168,14 +161,7 @@ pub async fn setup_game_for_circle_victory(
     mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) {
-    process_message(&mut player_one).await; // Player 1 connects
-    process_message(&mut player_two).await; // Player 2 connects
-    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
-
-    send_message(&mut player_one, "/start").await; // Game start
-
-    process_message(&mut player_one).await; // Player 1 recieves game start
-    process_message(&mut player_two).await; // Player 2 recieves game start
+    setup_and_start_game(player_one, player_two).await;
 
     send_message(&mut player_one, "/turn LL").await; // Player 1 turn
     process_message(&mut player_two).await;
