@@ -8,8 +8,13 @@ async fn when_first_player_connects_they_are_assigned_cross() {
 
     let msg = process_message(&mut player_one).await;
 
-    assert!(msg.is_text());
-    assert!(msg.to_text().unwrap().contains("Cross"));
+    let expected = serde_json::json!({
+        "body": "Cross",
+        "category": "Connected",
+    });
+    let result: serde_json::Value = serde_json::from_str(msg.to_text().unwrap()).unwrap();
+
+    assert_eq!(result, expected);
 }
 
 #[actix_web::test]
@@ -22,8 +27,13 @@ async fn when_second_player_connects_they_are_assigned_circle() {
     let _ = process_message(&mut player_one).await;
     let msg = process_message(&mut player_two).await;
 
-    assert!(msg.is_text());
-    assert!(msg.to_text().unwrap().contains("Circle"));
+    let expected = serde_json::json!({
+        "category": "Connected",
+        "body": "Circle",
+    });
+    let result: serde_json::Value = serde_json::from_str(msg.to_text().unwrap()).unwrap();
+
+    assert_eq!(result, expected);
 }
 
 #[actix_web::test]
@@ -38,5 +48,8 @@ async fn when_second_player_connects_player_one_is_notified() {
     let msg = process_message(&mut player_one).await;
 
     assert!(msg.is_text());
-    assert!(msg.to_text().unwrap().contains("PlayerConnected"));
+    assert!(msg
+        .to_text()
+        .unwrap()
+        .contains(r#""category":"PlayerConnected""#));
 }

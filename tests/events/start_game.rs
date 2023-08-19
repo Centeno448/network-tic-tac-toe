@@ -46,9 +46,16 @@ async fn cross_player_can_start_game() {
         .unwrap()
         .expect("Failed to recieve message.");
 
-    assert!(player_one_response.is_text());
-    assert!(player_two_response.is_text());
+    let expected = serde_json::json!({
+        "category": "GameStart",
+        "body": ""
+    });
 
-    assert!(player_one_response.to_text().unwrap().contains("GameStart"));
-    assert!(player_two_response.to_text().unwrap().contains("GameStart"));
+    let player_one_response: serde_json::Value =
+        serde_json::from_str(player_one_response.to_text().unwrap()).unwrap();
+    let player_two_response: serde_json::Value =
+        serde_json::from_str(player_two_response.to_text().unwrap()).unwrap();
+
+    assert_eq!(player_one_response, expected);
+    assert_eq!(player_two_response, expected);
 }
