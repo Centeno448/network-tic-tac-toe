@@ -1,7 +1,7 @@
-use crate::helpers::{process_message, spawn_app};
+use crate::helpers::{process_message, process_message_result, spawn_app};
 
 #[actix_web::test]
-async fn when_first_player_connects_they_are_assigned_cross() {
+async fn when_player_connects_they_recieve_confirmation() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;
@@ -9,8 +9,8 @@ async fn when_first_player_connects_they_are_assigned_cross() {
     let msg = process_message(&mut player_one).await;
 
     let expected = serde_json::json!({
-        "body": "Cross",
         "category": "Connected",
+        "body": "",
     });
     let result: serde_json::Value = serde_json::from_str(msg.to_text().unwrap()).unwrap();
 
@@ -18,38 +18,19 @@ async fn when_first_player_connects_they_are_assigned_cross() {
 }
 
 #[actix_web::test]
-async fn when_second_player_connects_they_are_assigned_circle() {
+async fn when_another_player_connects_others_are_not_notified() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;
     let mut player_two = test_app.connect_player().await;
-
-    let _ = process_message(&mut player_one).await;
-    let msg = process_message(&mut player_two).await;
-
-    let expected = serde_json::json!({
-        "category": "Connected",
-        "body": "Circle",
-    });
-    let result: serde_json::Value = serde_json::from_str(msg.to_text().unwrap()).unwrap();
-
-    assert_eq!(result, expected);
-}
-
-#[actix_web::test]
-async fn when_second_player_connects_player_one_is_notified() {
-    let test_app = spawn_app().await;
-
-    let mut player_one = test_app.connect_player().await;
-    let mut player_two = test_app.connect_player().await;
+    let mut player_three = test_app.connect_player().await;
 
     let _ = process_message(&mut player_one).await;
     let _ = process_message(&mut player_two).await;
-    let msg = process_message(&mut player_one).await;
+    let _ = process_message(&mut player_three).await;
+    let player_one_msg = process_message_result(&mut player_one).await;
+    let player_two_msg = process_message_result(&mut player_two).await;
 
-    assert!(msg.is_text());
-    assert!(msg
-        .to_text()
-        .unwrap()
-        .contains(r#""category":"PlayerConnected""#));
+    assert!(player_one_msg.is_none());
+    assert!(player_two_msg.is_none());
 }

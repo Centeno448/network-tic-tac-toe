@@ -22,11 +22,9 @@ impl Actor for PlayerSession {
                 addr: session_addr.recipient(),
             })
             .into_actor(self)
-            .then(|res, player_session, ctx| {
+            .then(|res, _, ctx| {
                 match res {
-                    Ok(team_symbol) => {
-                        player_session.team_symbol = Some(team_symbol);
-                    }
+                    Ok(_) => {}
                     _ => ctx.stop(),
                 }
                 fut::ready(())
