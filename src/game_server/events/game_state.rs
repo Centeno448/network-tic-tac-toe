@@ -1,4 +1,5 @@
 use actix::prelude::*;
+use uuid::Uuid;
 
 use crate::game_server::{GameServer, GameState};
 
@@ -15,7 +16,7 @@ impl Handler<GetGameState> for GameServer {
         fields(room_name=%msg.0)
     )]
     fn handle(&mut self, msg: GetGameState, _: &mut Self::Context) -> Self::Result {
-        match self.rooms.get(&msg.0) {
+        match self.rooms.get(&Uuid::new_v4()) {
             None => {
                 tracing::info!("Room {} not found", &msg.0);
                 GameState(None)

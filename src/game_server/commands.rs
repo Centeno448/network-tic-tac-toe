@@ -5,6 +5,7 @@ pub enum CommandCategory {
     Connected,
     PlayerConnected,
     PlayerDisconnected,
+    MatchCreated,
     GameStart,
     Turn,
     GameOver,

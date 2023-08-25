@@ -23,12 +23,12 @@ impl StartGame {
 impl Handler<StartGame> for GameServer {
     type Result = ();
 
-    #[tracing::instrument(name = "Game Start", skip_all, fields(room_name, player_id=%msg.id, team_symbol=%msg.team_symbol_to_string()))]
+    #[tracing::instrument(name = "Game Start", skip_all, fields(room_id, player_id=%msg.id, team_symbol=%msg.team_symbol_to_string()))]
     fn handle(&mut self, msg: StartGame, _: &mut Self::Context) -> Self::Result {
-        let mut result_room: Option<String> = None;
+        let mut result_room: Option<Uuid> = None;
 
-        if let Some((room_name, room)) = find_waiting_game_room(self, &msg.id) {
-            tracing::Span::current().record("room_name", room_name);
+        if let Some((room_id, room)) = find_waiting_game_room(self, &msg.id) {
+            tracing::Span::current().record("room_id", room_id.to_string());
 
             if msg.team_symbol != Some(TeamSymbol::Cross) {
                 tracing::info!("Circle player attempted to start the game, ignoring.");
@@ -37,7 +37,7 @@ impl Handler<StartGame> for GameServer {
 
             room.status = GameRoomStatus::Started;
 
-            result_room = Some(room_name.clone());
+            result_room = Some(room_id.clone());
         } else {
             tracing::info!("Player is not in any room with 2 players and status waiting.");
         }
@@ -53,7 +53,7 @@ impl Handler<StartGame> for GameServer {
 fn find_waiting_game_room<'a>(
     server: &'a mut GameServer,
     id: &'a Uuid,
-) -> Option<(&'a String, &'a mut GameRoom)> {
+) -> Option<(&'a Uuid, &'a mut GameRoom)> {
     server.rooms.iter_mut().find(|(_, room)| {
         room.status == GameRoomStatus::Waiting
             && room.players.iter().count() == 2

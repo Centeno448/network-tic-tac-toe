@@ -77,6 +77,26 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             fut::ready(())
                         })
                         .wait(ctx);
+                } else if trimmed_text.starts_with("/create_match") {
+                    let room_name: Vec<&str> = trimmed_text.split(' ').collect();
+
+                    if let Some(room_name) = room_name.get(1) {
+                        let room_name = *room_name;
+                        self.game_server_addr
+                            .send(game_server::events::CreateMatch {
+                                id: self.id,
+                                room_name: room_name.into(),
+                            })
+                            .into_actor(self)
+                            .then(|res, _, ctx| {
+                                match res {
+                                    Ok(_) => (),
+                                    _ => ctx.stop(),
+                                }
+                                fut::ready(())
+                            })
+                            .wait(ctx);
+                    }
                 }
             }
             Ok(ws::Message::Close(reason)) => {

@@ -28,15 +28,15 @@ impl Handler<Turn> for GameServer {
     #[tracing::instrument(
         name = "Turn",
         skip_all,
-        fields(room_name, player_id=%msg.id, player_move=%msg.turn_move, player_team=%msg.team_symbol_to_string())
+        fields(room_id, player_id=%msg.id, player_move=%msg.turn_move, player_team=%msg.team_symbol_to_string())
     )]
     fn handle(&mut self, msg: Turn, _: &mut Self::Context) -> Self::Result {
-        let result_room: Option<String>;
+        let result_room: Option<Uuid>;
         let is_victory;
         let is_tie;
 
-        if let Some((room_name, room)) = find_started_room_by_player_id(self, &msg.id) {
-            tracing::Span::current().record("room_name", room_name);
+        if let Some((room_id, room)) = find_started_room_by_player_id(self, &msg.id) {
+            tracing::Span::current().record("room_name", room_id.to_string());
 
             if is_invalid_turn(room.current_turn, msg.team_symbol) {
                 tracing::info!("Invalid turn.");
@@ -48,7 +48,7 @@ impl Handler<Turn> for GameServer {
                 return;
             }
 
-            result_room = Some(room_name.clone());
+            result_room = Some(room_id.clone());
 
             room.moves_made.insert(msg.turn_move.clone(), msg.id);
 
@@ -97,7 +97,7 @@ impl Handler<Turn> for GameServer {
 fn find_started_room_by_player_id<'a>(
     server: &'a mut GameServer,
     id: &'a Uuid,
-) -> Option<(&'a String, &'a mut GameRoom)> {
+) -> Option<(&'a Uuid, &'a mut GameRoom)> {
     server
         .rooms
         .iter_mut()

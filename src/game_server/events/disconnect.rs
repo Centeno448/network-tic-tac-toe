@@ -1,5 +1,4 @@
 use actix::prelude::*;
-use std::sync::atomic::Ordering;
 use uuid::Uuid;
 
 use crate::game_server::{CommandCategory, Commmand, GameServer};
@@ -19,20 +18,22 @@ impl Handler<Disconnect> for GameServer {
         fields(player_session_id=%msg.id)
     )]
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) -> Self::Result {
+        let mut result_room: Option<Uuid> = None;
+
         if self.sessions.remove(&msg.id).is_some() {
-            for (_, room) in &mut self.rooms {
+            for (room_id, room) in &mut self.rooms {
+                if room.players.contains(&msg.id) {
+                    result_room = Some(room_id.clone());
+                }
                 room.players.remove(&msg.id);
             }
         }
 
-        let _ = self.visitor_count.fetch_sub(1, Ordering::SeqCst);
-        let count = self.visitor_count.load(Ordering::Relaxed);
-        tracing::info!("Number of players in lobby: {count}");
+        if let Some(room_id) = result_room {
+            let command = Commmand::new(CommandCategory::PlayerDisconnected, msg.id.to_string());
+            let result = serde_json::to_string(&command).unwrap_or("".into());
 
-        let command = Commmand::new(CommandCategory::PlayerDisconnected, msg.id.to_string());
-
-        let result = serde_json::to_string(&command).unwrap_or("".into());
-
-        self.send_message("lobby", &result, msg.id);
+            self.send_message(&room_id, &result, msg.id);
+        }
     }
 }

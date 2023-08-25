@@ -17,7 +17,7 @@ pub struct ServerMessage(pub String);
 #[derive(Debug)]
 pub struct GameServer {
     pub sessions: HashMap<Uuid, Recipient<ServerMessage>>,
-    pub rooms: HashMap<String, GameRoom>,
+    pub rooms: HashMap<Uuid, GameRoom>,
     pub visitor_count: Arc<AtomicUsize>,
 }
 
@@ -26,15 +26,17 @@ pub struct GameRoom {
     pub players: HashSet<Uuid>,
     pub status: GameRoomStatus,
     pub current_turn: TeamSymbol,
+    pub name: String,
     pub moves_made: HashMap<TurnMove, Uuid>,
 }
 
 impl GameRoom {
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         GameRoom {
             players: HashSet::new(),
             status: GameRoomStatus::Waiting,
             current_turn: TeamSymbol::Cross,
+            name,
             moves_made: HashMap::new(),
         }
     }
@@ -64,9 +66,7 @@ pub enum GameRoomStatus {
 
 impl GameServer {
     pub fn new(visitor_count: Arc<AtomicUsize>) -> GameServer {
-        // default room
-        let mut rooms = HashMap::new();
-        rooms.insert("lobby".to_owned(), GameRoom::new());
+        let rooms = HashMap::new();
 
         GameServer {
             sessions: HashMap::new(),
@@ -78,7 +78,7 @@ impl GameServer {
 
 impl GameServer {
     /// Relay message to everyone else in the room
-    pub fn send_message(&self, room: &str, message: &str, skip_id: Uuid) {
+    pub fn send_message(&self, room: &Uuid, message: &str, skip_id: Uuid) {
         if let Some(game_room) = self.rooms.get(room) {
             for id in game_room.players.iter() {
                 if *id != skip_id {
@@ -91,7 +91,7 @@ impl GameServer {
     }
 
     /// Send message to all users in the room
-    pub fn send_message_all(&self, room: &str, message: &str) {
+    pub fn send_message_all(&self, room: &Uuid, message: &str) {
         if let Some(game_room) = self.rooms.get(room) {
             for id in game_room.players.iter() {
                 if let Some(addr) = self.sessions.get(id) {
