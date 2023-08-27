@@ -1,7 +1,7 @@
 use crate::helpers::{process_message, send_message, spawn_app};
 
 #[actix_web::test]
-async fn cross_player_can_start_game() {
+async fn match_can_be_created() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;

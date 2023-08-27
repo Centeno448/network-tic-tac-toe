@@ -1,11 +1,13 @@
 use futures_util::{SinkExt, StreamExt};
 use once_cell::sync::Lazy;
+use serde::Deserialize;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use url::Url;
+use uuid::Uuid;
 
 use network_tic_tac_toe::configuration::get_configuration;
 use network_tic_tac_toe::startup::Application;
@@ -23,6 +25,23 @@ static TRACING: Lazy<()> = Lazy::new(|| {
         init_subscriber(subscriber);
     }
 });
+
+#[derive(Deserialize)]
+pub struct MatchListResponse {
+    pub category: String,
+    pub body: MatchListResponseBody,
+}
+
+#[derive(Deserialize)]
+pub struct MatchListResponseBody {
+    pub matches: Vec<ResponseMatch>,
+}
+
+#[derive(Deserialize)]
+pub struct ResponseMatch {
+    pub match_id: Uuid,
+    pub room_name: String,
+}
 
 pub struct TestApp {
     pub address: String,

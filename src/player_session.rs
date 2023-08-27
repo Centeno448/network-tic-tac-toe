@@ -97,6 +97,39 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             })
                             .wait(ctx);
                     }
+                } else if trimmed_text.starts_with("/join_match") {
+                    let room_id: Vec<&str> = trimmed_text.split(' ').collect();
+
+                    if let Some(room_id) = room_id.get(1) {
+                        if let Ok(room_id) = Uuid::try_parse(room_id) {
+                            self.game_server_addr
+                                .send(game_server::events::JoinMatch {
+                                    player_id: self.id,
+                                    room_id,
+                                })
+                                .into_actor(self)
+                                .then(|res, _, ctx| {
+                                    match res {
+                                        Ok(_) => (),
+                                        _ => ctx.stop(),
+                                    }
+                                    fut::ready(())
+                                })
+                                .wait(ctx);
+                        }
+                    }
+                } else if trimmed_text.starts_with("/list_matches") {
+                    self.game_server_addr
+                        .send(game_server::events::ListMatches { player_id: self.id })
+                        .into_actor(self)
+                        .then(|res, _, ctx| {
+                            match res {
+                                Ok(_) => (),
+                                _ => ctx.stop(),
+                            }
+                            fut::ready(())
+                        })
+                        .wait(ctx);
                 }
             }
             Ok(ws::Message::Close(reason)) => {
