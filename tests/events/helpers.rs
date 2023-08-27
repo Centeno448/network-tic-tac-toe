@@ -107,7 +107,23 @@ pub async fn setup_and_start_game(
 ) {
     process_message(&mut player_one).await; // Player 1 connects
     process_message(&mut player_two).await; // Player 2 connects
-    process_message(&mut player_one).await; // Player 1 recieves confirmation player 2 connected
+
+    send_message(&mut player_one, "/create_match room").await;
+
+    process_message(&mut player_one).await;
+
+    send_message(&mut player_two, "/list_matches").await;
+
+    let player_two_response = process_message(&mut player_two).await;
+    let player_two_response: MatchListResponse =
+        serde_json::from_str(player_two_response.to_text().unwrap()).unwrap();
+
+    let match_id = player_two_response.body.matches.first().unwrap().match_id;
+
+    send_message(&mut player_two, &format!("/join_match {}", match_id)).await;
+
+    process_message(&mut player_two).await;
+    process_message(&mut player_one).await;
 
     send_message(&mut player_one, "/start").await; // Game start
 

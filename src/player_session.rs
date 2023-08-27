@@ -88,9 +88,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                 room_name: room_name.into(),
                             })
                             .into_actor(self)
-                            .then(|res, _, ctx| {
+                            .then(|res, session, ctx| {
                                 match res {
-                                    Ok(_) => (),
+                                    Ok(_) => {
+                                        session.team_symbol =
+                                            Some(game_server::domain::TeamSymbol::Cross);
+                                    }
                                     _ => ctx.stop(),
                                 }
                                 fut::ready(())
@@ -108,9 +111,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                     room_id,
                                 })
                                 .into_actor(self)
-                                .then(|res, _, ctx| {
+                                .then(|res, session, ctx| {
                                     match res {
-                                        Ok(_) => (),
+                                        Ok(_) => {
+                                            session.team_symbol =
+                                                Some(game_server::domain::TeamSymbol::Circle);
+                                        }
                                         _ => ctx.stop(),
                                     }
                                     fut::ready(())

@@ -15,16 +15,19 @@ impl Handler<JoinMatch> for GameServer {
 
     #[tracing::instrument(name = "Join match", skip_all, fields(player_session_id=%msg.player_id))]
     fn handle(&mut self, msg: JoinMatch, _: &mut Context<Self>) -> Self::Result {
-        let mut result_room: Option<String> = None;
-        if let Some((_, game_room)) = find_waiting_game_room(self, &msg.room_id) {
+        let mut result_room: Option<(Uuid, String)> = None;
+        if let Some((room_id, game_room)) = find_waiting_game_room(self, &msg.room_id) {
             game_room.players.insert(msg.player_id);
-            result_room = Some(game_room.name.clone());
+            result_room = Some((room_id.clone(), game_room.name.clone()));
         }
 
-        if let Some(room_name) = result_room {
+        if let Some((room_id, room_name)) = result_room {
             if let Some(addr) = self.sessions.get(&msg.player_id) {
                 let command = Commmand::new_serialized(CommandCategory::MatchJoined, room_name);
                 self.send_direct_message(addr, &command);
+
+                let command = Commmand::new_serialized(CommandCategory::PlayerConnected, "");
+                self.send_message(&room_id, &command, msg.player_id.clone());
             }
         }
     }
