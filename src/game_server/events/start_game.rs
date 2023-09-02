@@ -57,6 +57,6 @@ fn find_waiting_game_room<'a>(
     server.rooms.iter_mut().find(|(_, room)| {
         room.status == GameRoomStatus::Waiting
             && room.players.iter().count() == 2
-            && room.players.contains(id)
+            && room.players.contains_key(id)
     })
 }

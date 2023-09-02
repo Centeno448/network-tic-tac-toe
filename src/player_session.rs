@@ -8,6 +8,7 @@ use crate::game_server;
 pub struct PlayerSession {
     pub id: Uuid,
     pub team_symbol: Option<game_server::domain::TeamSymbol>,
+    pub username: String,
     pub game_server_addr: Addr<game_server::GameServer>,
 }
 
@@ -86,6 +87,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             .send(game_server::events::CreateMatch {
                                 id: self.id,
                                 room_name: room_name.into(),
+                                username: self.username.clone(),
                             })
                             .into_actor(self)
                             .then(|res, session, ctx| {
@@ -109,6 +111,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                 .send(game_server::events::JoinMatch {
                                     player_id: self.id,
                                     room_id,
+                                    username: self.username.clone(),
                                 })
                                 .into_actor(self)
                                 .then(|res, session, ctx| {
@@ -136,6 +139,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             fut::ready(())
                         })
                         .wait(ctx);
+                } else if trimmed_text.starts_with("/username") {
+                    let user_name: Vec<&str> = trimmed_text.split(' ').collect();
+
+                    if let Some(user_name) = user_name.get(1) {
+                        let user_name = *user_name;
+                        self.username = user_name.into();
+                    }
                 }
             }
             Ok(ws::Message::Close(reason)) => {

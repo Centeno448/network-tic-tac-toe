@@ -101,7 +101,7 @@ fn find_started_room_by_player_id<'a>(
     server
         .rooms
         .iter_mut()
-        .find(|(_, room)| room.players.contains(id) && room.status == GameRoomStatus::Started)
+        .find(|(_, room)| room.players.contains_key(id) && room.status == GameRoomStatus::Started)
 }
 
 fn change_turn(room: &mut GameRoom) {

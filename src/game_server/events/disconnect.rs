@@ -25,7 +25,7 @@ impl Handler<Disconnect> for GameServer {
 
         if self.sessions.remove(&msg.id).is_some() {
             for (room_id, room) in &mut self.rooms {
-                if room.players.contains(&msg.id) {
+                if room.players.contains_key(&msg.id) {
                     room.players.remove(&msg.id);
                     if room.players.len() > 0 {
                         reset_room(room);

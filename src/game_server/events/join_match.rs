@@ -8,6 +8,7 @@ use crate::game_server::{CommandCategory, Commmand, GameRoom, GameRoomStatus, Ga
 pub struct JoinMatch {
     pub player_id: Uuid,
     pub room_id: Uuid,
+    pub username: String,
 }
 
 impl Handler<JoinMatch> for GameServer {
@@ -16,17 +17,23 @@ impl Handler<JoinMatch> for GameServer {
     #[tracing::instrument(name = "Join match", skip_all, fields(player_session_id=%msg.player_id))]
     fn handle(&mut self, msg: JoinMatch, _: &mut Context<Self>) -> Self::Result {
         let mut result_room: Option<(Uuid, String)> = None;
+        let mut other_player_username = String::from("");
         if let Some((room_id, game_room)) = find_waiting_game_room(self, &msg.room_id) {
-            game_room.players.insert(msg.player_id);
+            other_player_username = game_room.players.iter().next().unwrap().1.clone();
+            game_room
+                .players
+                .insert(msg.player_id, msg.username.clone());
             result_room = Some((room_id.clone(), game_room.name.clone()));
         }
 
-        if let Some((room_id, room_name)) = result_room {
+        if let Some((room_id, _)) = result_room {
             if let Some(addr) = self.sessions.get(&msg.player_id) {
-                let command = Commmand::new_serialized(CommandCategory::MatchJoined, room_name);
+                let command =
+                    Commmand::new_serialized(CommandCategory::MatchJoined, other_player_username);
                 self.send_direct_message(addr, &command);
 
-                let command = Commmand::new_serialized(CommandCategory::PlayerConnected, "");
+                let command =
+                    Commmand::new_serialized(CommandCategory::PlayerConnected, &msg.username);
                 self.send_message(&room_id, &command, msg.player_id.clone());
             }
         }

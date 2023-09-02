@@ -10,6 +10,9 @@ async fn existing_match_can_be_joined() {
     process_message(&mut player_one).await; // Player 1 connects
     process_message(&mut player_two).await; // Player 2 connects
 
+    send_message(&mut player_one, "/username playerone").await; // Set player one username
+    send_message(&mut player_two, "/username playertwo").await; // Set player two username
+
     send_message(&mut player_one, "/create_match my-own-room").await;
 
     process_message(&mut player_one).await;
@@ -24,15 +27,25 @@ async fn existing_match_can_be_joined() {
 
     send_message(&mut player_two, &format!("/join_match {}", match_id)).await;
 
+    let player_one_response = process_message(&mut player_one).await;
+    let player_one_response: serde_json::Value =
+        serde_json::from_str(player_one_response.to_text().unwrap()).unwrap();
+
+    let expected_p1_response = serde_json::json!({
+        "category": "PlayerConnected",
+        "body": "playertwo"
+    });
+
     let player_two_response = process_message(&mut player_two).await;
 
-    let expected = serde_json::json!({
+    let expected_p2_response = serde_json::json!({
         "category": "MatchJoined",
-        "body": "my-own-room"
+        "body": "playerone"
     });
 
     let player_two_response: serde_json::Value =
         serde_json::from_str(player_two_response.to_text().unwrap()).unwrap();
 
-    assert_eq!(player_two_response, expected);
+    assert_eq!(player_two_response, expected_p2_response);
+    assert_eq!(player_one_response, expected_p1_response);
 }

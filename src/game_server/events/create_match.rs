@@ -7,6 +7,7 @@ use crate::game_server::{CommandCategory, Commmand, GameRoom, GameServer};
 #[rtype(result = "()")]
 pub struct CreateMatch {
     pub id: Uuid,
+    pub username: String,
     pub room_name: String,
 }
 
@@ -24,7 +25,7 @@ impl Handler<CreateMatch> for GameServer {
             .get_mut(&room_id)
             .unwrap()
             .players
-            .insert(msg.id.clone());
+            .insert(msg.id.clone(), msg.username);
 
         if let Some(addr) = self.sessions.get(&msg.id) {
             let command = Commmand::new_serialized(CommandCategory::MatchCreated, msg.room_name);

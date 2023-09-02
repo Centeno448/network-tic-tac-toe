@@ -2,7 +2,7 @@ use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::{Actor, Context, Message, Recipient};
 use serde::Serialize;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::{atomic::AtomicUsize, Arc},
 };
 use uuid::Uuid;
@@ -23,7 +23,7 @@ pub struct GameServer {
 
 #[derive(Debug, Clone)]
 pub struct GameRoom {
-    pub players: HashSet<Uuid>,
+    pub players: HashMap<Uuid, String>,
     pub status: GameRoomStatus,
     pub current_turn: TeamSymbol,
     pub name: String,
@@ -33,7 +33,7 @@ pub struct GameRoom {
 impl GameRoom {
     pub fn new(name: String) -> Self {
         GameRoom {
-            players: HashSet::new(),
+            players: HashMap::new(),
             status: GameRoomStatus::Waiting,
             current_turn: TeamSymbol::Cross,
             name,
@@ -80,7 +80,7 @@ impl GameServer {
     /// Relay message to everyone else in the room
     pub fn send_message(&self, room: &Uuid, message: &str, skip_id: Uuid) {
         if let Some(game_room) = self.rooms.get(room) {
-            for id in game_room.players.iter() {
+            for (id, _) in game_room.players.iter() {
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(id) {
                         addr.do_send(ServerMessage(message.to_owned()));
@@ -93,7 +93,7 @@ impl GameServer {
     /// Send message to all users in the room
     pub fn send_message_all(&self, room: &Uuid, message: &str) {
         if let Some(game_room) = self.rooms.get(room) {
-            for id in game_room.players.iter() {
+            for (id, _) in game_room.players.iter() {
                 if let Some(addr) = self.sessions.get(id) {
                     addr.do_send(ServerMessage(message.to_owned()));
                 }
