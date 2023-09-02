@@ -41,6 +41,7 @@ pub struct MatchListResponseBody {
 pub struct ResponseMatch {
     pub match_id: Uuid,
     pub room_name: String,
+    pub status: String,
 }
 
 pub struct TestApp {
@@ -101,12 +102,12 @@ pub async fn send_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>
         .expect("Failed to send message.")
 }
 
-pub async fn setup_and_start_game(
+pub async fn setup_game(
     mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) {
-    process_message(&mut player_one).await; // Player 1 connects
-    process_message(&mut player_two).await; // Player 2 connects
+    process_message(player_one).await; // Player 1 connects
+    process_message(player_two).await; // Player 2 connects
 
     send_message(&mut player_one, "/create_match room").await;
 
@@ -124,6 +125,36 @@ pub async fn setup_and_start_game(
 
     process_message(&mut player_two).await;
     process_message(&mut player_one).await;
+}
+
+pub async fn join_room(
+    mut existing_socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+    mut joining_socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+) {
+    send_message(&mut joining_socket, "/list_matches").await;
+
+    let joining_socket_response = process_message(&mut joining_socket).await;
+    let joining_socket_response: MatchListResponse =
+        serde_json::from_str(joining_socket_response.to_text().unwrap()).unwrap();
+
+    let match_id = joining_socket_response
+        .body
+        .matches
+        .first()
+        .unwrap()
+        .match_id;
+
+    send_message(&mut joining_socket, &format!("/join_match {}", match_id)).await;
+
+    process_message(&mut joining_socket).await;
+    process_message(&mut existing_socket).await;
+}
+
+pub async fn setup_and_start_game(
+    mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+    mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+) {
+    setup_game(player_one, player_two).await;
 
     send_message(&mut player_one, "/start").await; // Game start
 

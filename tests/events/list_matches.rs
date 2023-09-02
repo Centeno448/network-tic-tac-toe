@@ -50,12 +50,12 @@ async fn when_matches_exists_returns_them() {
         .body
         .matches
         .iter()
-        .find(|m| m.room_name == "player-1-room")
+        .find(|m| m.room_name == "player-1-room" && m.status == "Waiting")
         .is_some());
     assert!(response
         .body
         .matches
         .iter()
-        .find(|m| m.room_name == "player-2-room")
+        .find(|m| m.room_name == "player-2-room" && m.status == "Waiting")
         .is_some());
 }

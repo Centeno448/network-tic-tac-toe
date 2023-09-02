@@ -1,5 +1,6 @@
 use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::{Actor, Context, Message, Recipient};
+use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     sync::{atomic::AtomicUsize, Arc},
@@ -56,7 +57,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum GameRoomStatus {
     Waiting,
     Started,

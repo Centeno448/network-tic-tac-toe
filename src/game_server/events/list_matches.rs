@@ -21,6 +21,7 @@ impl Handler<ListMatches> for GameServer {
                 let value = serde_json::json!({
                     "match_id": room_id.to_owned(),
                     "room_name": room.name.to_owned(),
+                    "status": room.status.to_owned(),
                 });
 
                 results.push(value);

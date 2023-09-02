@@ -150,6 +150,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
 impl Handler<game_server::ServerMessage> for PlayerSession {
     type Result = ();
     fn handle(&mut self, msg: game_server::ServerMessage, ctx: &mut Self::Context) -> Self::Result {
+        if msg.0.contains("PlayerDisconnected")
+            && self.team_symbol == Some(game_server::domain::TeamSymbol::Circle)
+        {
+            self.team_symbol = Some(game_server::domain::TeamSymbol::Cross);
+        }
+
         ctx.text(msg.0);
     }
 }
