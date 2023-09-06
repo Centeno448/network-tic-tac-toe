@@ -18,9 +18,11 @@ impl Handler<ListMatches> for GameServer {
             let mut results: Vec<serde_json::Value> = vec![];
 
             for (room_id, room) in self.rooms.iter() {
+                let player_count = format!("{}/2", room.players.len());
                 let value = serde_json::json!({
-                    "match_id": room_id.to_owned(),
-                    "room_name": room.name.to_owned(),
+                    "matchId": room_id.to_owned(),
+                    "roomName": room.name.to_owned(),
+                    "players": player_count,
                     "status": room.status.to_owned(),
                 });
 

@@ -38,9 +38,11 @@ pub struct MatchListResponseBody {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ResponseMatch {
     pub match_id: Uuid,
     pub room_name: String,
+    pub players: String,
     pub status: String,
 }
 
