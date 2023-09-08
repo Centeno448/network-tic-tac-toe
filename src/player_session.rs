@@ -78,7 +78,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             fut::ready(())
                         })
                         .wait(ctx);
-                } else if trimmed_text.starts_with("/create_match") {
+                } else if trimmed_text.starts_with("/create") {
                     let room_name: Vec<&str> = trimmed_text.split(' ').collect();
 
                     if let Some(room_name) = room_name.get(1) {
@@ -102,7 +102,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             })
                             .wait(ctx);
                     }
-                } else if trimmed_text.starts_with("/join_match") {
+                } else if trimmed_text.starts_with("/join") {
                     let room_id: Vec<&str> = trimmed_text.split(' ').collect();
 
                     if let Some(room_id) = room_id.get(1) {
@@ -127,7 +127,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                 .wait(ctx);
                         }
                     }
-                } else if trimmed_text.starts_with("/list_matches") {
+                } else if trimmed_text.starts_with("/list") {
                     self.game_server_addr
                         .send(game_server::events::ListMatches { player_id: self.id })
                         .into_actor(self)

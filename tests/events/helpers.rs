@@ -111,11 +111,11 @@ pub async fn setup_game(
     process_message(player_one).await; // Player 1 connects
     process_message(player_two).await; // Player 2 connects
 
-    send_message(&mut player_one, "/create_match room").await;
+    send_message(&mut player_one, "/create room").await;
 
     process_message(&mut player_one).await;
 
-    send_message(&mut player_two, "/list_matches").await;
+    send_message(&mut player_two, "/list").await;
 
     let player_two_response = process_message(&mut player_two).await;
     let player_two_response: MatchListResponse =
@@ -123,7 +123,7 @@ pub async fn setup_game(
 
     let match_id = player_two_response.body.matches.first().unwrap().match_id;
 
-    send_message(&mut player_two, &format!("/join_match {}", match_id)).await;
+    send_message(&mut player_two, &format!("/join {}", match_id)).await;
 
     process_message(&mut player_two).await;
     process_message(&mut player_one).await;
@@ -133,7 +133,7 @@ pub async fn join_room(
     mut existing_socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut joining_socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) {
-    send_message(&mut joining_socket, "/list_matches").await;
+    send_message(&mut joining_socket, "/list").await;
 
     let joining_socket_response = process_message(&mut joining_socket).await;
     let joining_socket_response: MatchListResponse =
@@ -146,7 +146,7 @@ pub async fn join_room(
         .unwrap()
         .match_id;
 
-    send_message(&mut joining_socket, &format!("/join_match {}", match_id)).await;
+    send_message(&mut joining_socket, &format!("/join {}", match_id)).await;
 
     process_message(&mut joining_socket).await;
     process_message(&mut existing_socket).await;

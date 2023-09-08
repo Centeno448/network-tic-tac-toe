@@ -8,7 +8,7 @@ async fn match_can_be_created() {
 
     process_message(&mut player_one).await; // Player 1 connects
 
-    send_message(&mut player_one, "/create_match my-own-room").await;
+    send_message(&mut player_one, "/create my-own-room").await;
 
     let player_one_response = process_message(&mut player_one).await;
 

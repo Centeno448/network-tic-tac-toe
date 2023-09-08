@@ -178,7 +178,7 @@ async fn when_both_players_disconnect_deletes_room() {
         }))
         .await;
 
-    send_message(&mut player_three, "/list_matches").await;
+    send_message(&mut player_three, "/list").await;
 
     let player_three_response = process_message(&mut player_three).await;
     let player_three_response: MatchListResponse =
