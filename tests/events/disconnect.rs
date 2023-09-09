@@ -70,7 +70,7 @@ async fn when_player_disconnects_during_match_resets_room() {
 
     setup_and_start_game(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_one, "/turn MM").await;
+    send_message(&mut player_one, &build_turn_message("MM")).await;
 
     process_message(&mut player_two).await;
 
@@ -85,12 +85,12 @@ async fn when_player_disconnects_during_match_resets_room() {
 
     join_room(&mut player_one, &mut player_three).await; // Player 3 joins player 1's room.
 
-    send_message(&mut player_one, "/start").await;
+    send_message(&mut player_one, START_MESSAGE).await;
 
     process_message(&mut player_one).await;
     process_message(&mut player_three).await;
 
-    send_message(&mut player_one, "/turn MM").await; // Duplicate turn if room had not reset.
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Duplicate turn if room had not reset.
 
     let player_three_response = process_message(&mut player_three).await;
 
@@ -116,7 +116,7 @@ async fn when_cross_player_disconnects_circle_player_becomes_cross() {
 
     setup_and_start_game(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_one, "/turn MM").await;
+    send_message(&mut player_one, &build_turn_message("MM")).await;
 
     process_message(&mut player_two).await;
 
@@ -131,12 +131,12 @@ async fn when_cross_player_disconnects_circle_player_becomes_cross() {
 
     join_room(&mut player_two, &mut player_three).await; // Player 3 joins player 1's room.
 
-    send_message(&mut player_two, "/start").await;
+    send_message(&mut player_two, START_MESSAGE).await;
 
     process_message(&mut player_two).await;
     process_message(&mut player_three).await;
 
-    send_message(&mut player_two, "/turn MM").await; // Duplicate turn if room had not reset.
+    send_message(&mut player_two, &build_turn_message("MM")).await; // Duplicate turn if room had not reset.
 
     let player_three_response = process_message(&mut player_three).await;
 
@@ -178,7 +178,7 @@ async fn when_both_players_disconnect_deletes_room() {
         }))
         .await;
 
-    send_message(&mut player_three, "/list").await;
+    send_message(&mut player_three, LIST_MESSAGE).await;
 
     let player_three_response = process_message(&mut player_three).await;
     let player_three_response: MatchListResponse =

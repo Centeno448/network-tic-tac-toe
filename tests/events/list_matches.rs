@@ -1,4 +1,6 @@
-use crate::helpers::{process_message, send_message, spawn_app, MatchListResponse};
+use crate::helpers::{
+    build_create_message, process_message, send_message, spawn_app, MatchListResponse, LIST_MESSAGE,
+};
 
 #[actix_web::test]
 async fn when_no_matches_exists_returns_empty_array() {
@@ -8,7 +10,7 @@ async fn when_no_matches_exists_returns_empty_array() {
 
     process_message(&mut player_one).await; // Player 1 connects
 
-    send_message(&mut player_one, "/list").await;
+    send_message(&mut player_one, LIST_MESSAGE).await;
 
     let player_one_response = process_message(&mut player_one).await; // Player 3 recieves match list
 
@@ -31,13 +33,13 @@ async fn when_matches_exists_returns_them() {
     process_message(&mut player_two).await; // Player 2 connects
     process_message(&mut player_three).await; // Player 3 connects
 
-    send_message(&mut player_one, "/create player-1-room").await;
-    send_message(&mut player_two, "/create player-2-room").await;
+    send_message(&mut player_one, &build_create_message("player-1-room")).await;
+    send_message(&mut player_two, &build_create_message("player-2-room")).await;
 
     process_message(&mut player_one).await; // Player 1 recieves match creation confirmation
     process_message(&mut player_two).await; // Player 2 recieves match creation confirmation
 
-    send_message(&mut player_three, "/list").await;
+    send_message(&mut player_three, LIST_MESSAGE).await;
 
     let player_three_response = process_message(&mut player_three).await; // Player 3 recieves match list
 

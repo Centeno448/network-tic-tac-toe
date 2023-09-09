@@ -9,7 +9,7 @@ async fn server_ignores_invalid_turn() {
 
     setup_and_start_game(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_two, "/turn MM").await; // Invalid turn
+    send_message(&mut player_two, &build_turn_message("MM")).await; // Invalid turn
 
     let player_one_response = process_message_result(&mut player_one).await;
 
@@ -28,11 +28,11 @@ async fn server_ignores_duplicate_turn() {
 
     setup_and_start_game(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_one, "/turn MM").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Player 1 turn
 
     process_message(&mut player_two).await; // Player 2 recieves turn
 
-    send_message(&mut player_one, "/turn MM").await; // Player 2 duplicate turn
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Player 2 duplicate turn
 
     let player_one_response = process_message_result(&mut player_one).await;
 
@@ -51,11 +51,11 @@ async fn server_processes_valid_turn() {
 
     setup_and_start_game(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_one, "/turn MM").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Player 1 turn
 
     let player_two_msg = process_message_result(&mut player_two).await; // Player 2 recieves turn
 
-    send_message(&mut player_two, "/turn LL").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("LL")).await; // Player 2 turn
 
     let player_one_msg = process_message_result(&mut player_one).await; // Player 1 recieves turn
 
@@ -99,7 +99,7 @@ async fn game_ends_on_tie() {
 
     setup_game_for_tie(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_one, "/turn ML").await; // Final turn
+    send_message(&mut player_one, &build_turn_message("ML")).await; // Final turn
     process_message(&mut player_two).await; // Player 2 recieves final turn
 
     let player_one_msg = process_message(&mut player_one).await;
@@ -130,7 +130,7 @@ async fn game_ends_on_diagonal_victory() {
 
     setup_game_for_diagonal_victory(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_one, "/turn UR").await; // Final turn
+    send_message(&mut player_one, &build_turn_message("UR")).await; // Final turn
     process_message(&mut player_two).await; // Player 2 recieves final turn
 
     let player_one_msg = process_message(&mut player_one).await;
@@ -162,7 +162,7 @@ async fn game_ends_on_cross_victory() {
 
     setup_game_for_cross_victory(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_one, "/turn LR").await; // Final turn
+    send_message(&mut player_one, &build_turn_message("LR")).await; // Final turn
     process_message(&mut player_two).await; // Player 2 recieves final turn
 
     let player_one_msg = process_message(&mut player_one).await;
@@ -194,7 +194,7 @@ async fn game_ends_on_circle_victory() {
 
     setup_game_for_circle_victory(&mut player_one, &mut player_two).await;
 
-    send_message(&mut player_two, "/turn UR").await; // Final turn
+    send_message(&mut player_two, &build_turn_message("UR")).await; // Final turn
     process_message(&mut player_one).await; // Player 1 recieves final turn
 
     let player_one_msg = process_message(&mut player_one).await;

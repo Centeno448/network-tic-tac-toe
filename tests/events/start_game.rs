@@ -1,5 +1,6 @@
 use crate::helpers::{
-    process_message, process_message_result, send_message, spawn_app, MatchListResponse,
+    build_create_message, build_join_message, process_message, process_message_result,
+    send_message, spawn_app, MatchListResponse, LIST_MESSAGE, START_MESSAGE,
 };
 
 #[actix_web::test]
@@ -12,11 +13,11 @@ async fn circle_player_cant_start_game() {
     process_message(&mut player_one).await; // Player 1 connects
     process_message(&mut player_two).await; // Player 2 connects
 
-    send_message(&mut player_one, "/create room").await;
+    send_message(&mut player_one, &build_create_message("room")).await;
 
     process_message(&mut player_one).await;
 
-    send_message(&mut player_two, "/list").await;
+    send_message(&mut player_two, LIST_MESSAGE).await;
 
     let player_two_response = process_message(&mut player_two).await;
     let player_two_response: MatchListResponse =
@@ -24,10 +25,12 @@ async fn circle_player_cant_start_game() {
 
     let match_id = player_two_response.body.matches.first().unwrap().match_id;
 
-    send_message(&mut player_two, &format!("/join {}", match_id)).await;
+    send_message(&mut player_two, &build_join_message(match_id)).await;
 
     process_message(&mut player_two).await;
     process_message(&mut player_one).await;
+
+    send_message(&mut player_two, START_MESSAGE).await;
 
     let player_one_response = process_message_result(&mut player_one).await;
     let player_two_response = process_message_result(&mut player_two).await;
@@ -46,11 +49,11 @@ async fn cross_player_can_start_game() {
     process_message(&mut player_one).await; // Player 1 connects
     process_message(&mut player_two).await; // Player 2 connects
 
-    send_message(&mut player_one, "/create room").await;
+    send_message(&mut player_one, &build_create_message("room")).await;
 
     process_message(&mut player_one).await;
 
-    send_message(&mut player_two, "/list").await;
+    send_message(&mut player_two, LIST_MESSAGE).await;
 
     let player_two_response = process_message(&mut player_two).await;
     let player_two_response: MatchListResponse =
@@ -58,12 +61,12 @@ async fn cross_player_can_start_game() {
 
     let match_id = player_two_response.body.matches.first().unwrap().match_id;
 
-    send_message(&mut player_two, &format!("/join {}", match_id)).await;
+    send_message(&mut player_two, &build_join_message(match_id)).await;
 
     process_message(&mut player_two).await;
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/start").await;
+    send_message(&mut player_one, START_MESSAGE).await;
 
     let player_one_response = process_message_result(&mut player_one).await;
     let player_two_response = process_message_result(&mut player_two).await;

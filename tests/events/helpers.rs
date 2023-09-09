@@ -81,6 +81,21 @@ impl TestApp {
     }
 }
 
+pub const START_MESSAGE: &'static str = r#"{ "message": "Start"}"#;
+pub const LIST_MESSAGE: &'static str = r#"{ "message": "List"}"#;
+
+pub fn build_join_message(match_id: Uuid) -> String {
+    format!(r#"{{ "message": "Join", "content": "{}"}}"#, match_id)
+}
+
+pub fn build_create_message(room: &str) -> String {
+    format!(r#"{{ "message": "Create", "content": "{}"}}"#, room)
+}
+
+pub fn build_turn_message(turn: &str) -> String {
+    format!(r#"{{ "message": "Turn", "content": "{}"}}"#, turn)
+}
+
 pub async fn process_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>) -> Message {
     socket
         .next()
@@ -111,11 +126,11 @@ pub async fn setup_game(
     process_message(player_one).await; // Player 1 connects
     process_message(player_two).await; // Player 2 connects
 
-    send_message(&mut player_one, "/create room").await;
+    send_message(&mut player_one, &build_create_message("room")).await;
 
     process_message(&mut player_one).await;
 
-    send_message(&mut player_two, "/list").await;
+    send_message(&mut player_two, LIST_MESSAGE).await;
 
     let player_two_response = process_message(&mut player_two).await;
     let player_two_response: MatchListResponse =
@@ -123,7 +138,7 @@ pub async fn setup_game(
 
     let match_id = player_two_response.body.matches.first().unwrap().match_id;
 
-    send_message(&mut player_two, &format!("/join {}", match_id)).await;
+    send_message(&mut player_two, &build_join_message(match_id)).await;
 
     process_message(&mut player_two).await;
     process_message(&mut player_one).await;
@@ -133,7 +148,7 @@ pub async fn join_room(
     mut existing_socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut joining_socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) {
-    send_message(&mut joining_socket, "/list").await;
+    send_message(&mut joining_socket, LIST_MESSAGE).await;
 
     let joining_socket_response = process_message(&mut joining_socket).await;
     let joining_socket_response: MatchListResponse =
@@ -146,7 +161,7 @@ pub async fn join_room(
         .unwrap()
         .match_id;
 
-    send_message(&mut joining_socket, &format!("/join {}", match_id)).await;
+    send_message(&mut joining_socket, &build_join_message(match_id)).await;
 
     process_message(&mut joining_socket).await;
     process_message(&mut existing_socket).await;
@@ -158,7 +173,7 @@ pub async fn setup_and_start_game(
 ) {
     setup_game(player_one, player_two).await;
 
-    send_message(&mut player_one, "/start").await; // Game start
+    send_message(&mut player_one, START_MESSAGE).await; // Game start
 
     process_message(&mut player_one).await; // Player 1 recieves game start
     process_message(&mut player_two).await; // Player 2 recieves game start
@@ -170,24 +185,24 @@ pub async fn setup_game_for_tie(
 ) {
     setup_and_start_game(player_one, player_two).await;
 
-    send_message(&mut player_one, "/turn LL").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("LL")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn LM").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("LM")).await; // Player 2 turn
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/turn LR").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("LR")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn UL").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("UL")).await; // Player 2 turn
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/turn MM").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn UR").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("UR")).await; // Player 2 turn
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/turn UM").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("UM")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn MR").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("MR")).await; // Player 2 turn
     process_message(&mut player_one).await;
 }
 
@@ -197,14 +212,14 @@ pub async fn setup_game_for_diagonal_victory(
 ) {
     setup_and_start_game(player_one, player_two).await;
 
-    send_message(&mut player_one, "/turn LL").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("LL")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn LM").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("LM")).await; // Player 2 turn
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/turn MM").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn LR").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("LR")).await; // Player 2 turn
     process_message(&mut player_one).await;
 }
 
@@ -214,14 +229,14 @@ pub async fn setup_game_for_cross_victory(
 ) {
     setup_and_start_game(player_one, player_two).await;
 
-    send_message(&mut player_one, "/turn LL").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("LL")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn UL").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("UL")).await; // Player 2 turn
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/turn LM").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("LM")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn UM").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("UM")).await; // Player 2 turn
     process_message(&mut player_one).await;
 }
 
@@ -231,16 +246,16 @@ pub async fn setup_game_for_circle_victory(
 ) {
     setup_and_start_game(player_one, player_two).await;
 
-    send_message(&mut player_one, "/turn LL").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("LL")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn LR").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("LR")).await; // Player 2 turn
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/turn MM").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Player 1 turn
     process_message(&mut player_two).await;
-    send_message(&mut player_two, "/turn MR").await; // Player 2 turn
+    send_message(&mut player_two, &build_turn_message("MR")).await; // Player 2 turn
     process_message(&mut player_one).await;
 
-    send_message(&mut player_one, "/turn ML").await; // Player 1 turn
+    send_message(&mut player_one, &build_turn_message("ML")).await; // Player 1 turn
     process_message(&mut player_two).await;
 }
