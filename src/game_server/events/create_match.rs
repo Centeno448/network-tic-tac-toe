@@ -28,7 +28,7 @@ impl Handler<CreateMatch> for GameServer {
             .insert(msg.id.clone(), msg.username);
 
         if let Some(addr) = self.sessions.get(&msg.id) {
-            let command = Commmand::new_serialized(CommandCategory::MatchCreated, msg.room_name);
+            let command = Commmand::new_serialized(CommandCategory::MatchCreated, room_id);
             self.send_direct_message(addr, &command);
         }
     }

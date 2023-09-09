@@ -1,4 +1,12 @@
 use crate::helpers::{build_create_message, process_message, send_message, spawn_app};
+use serde::Deserialize;
+use uuid::Uuid;
+
+#[derive(Deserialize)]
+struct CreateMatchResponse {
+    category: String,
+    body: String,
+}
 
 #[actix_web::test]
 async fn match_can_be_created() {
@@ -12,13 +20,9 @@ async fn match_can_be_created() {
 
     let player_one_response = process_message(&mut player_one).await;
 
-    let expected = serde_json::json!({
-        "category": "MatchCreated",
-        "body": "my cool room"
-    });
-
-    let player_one_response: serde_json::Value =
+    let player_one_response: CreateMatchResponse =
         serde_json::from_str(player_one_response.to_text().unwrap()).unwrap();
 
-    assert_eq!(player_one_response, expected);
+    assert_eq!(player_one_response.category, "MatchCreated");
+    assert!(Uuid::try_parse(&player_one_response.body).is_ok());
 }
