@@ -12,10 +12,10 @@ pub fn get_configuration() -> Result<ApplicationSettings, config::ConfigError> {
     let base_path = std::env::current_dir().expect("Failed to determine the current directory.");
     let configuration_path = base_path.join("configuration");
 
-    let environment: Environment = std::env::var("NTTT_ENVIRONMENT")
+    let environment: Environment = std::env::var("NTTT__ENVIRONMENT")
         .unwrap_or_else(|_| "local".into())
         .try_into()
-        .expect("Failed to parse NTTT_ENVIRONMENT");
+        .expect("Failed to parse NTTT__ENVIRONMENT");
 
     let builder = config::Config::builder()
         .add_source(config::File::from(configuration_path.join("base")).required(true))
