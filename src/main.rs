@@ -10,7 +10,12 @@ use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-    let log_file = File::create("network-tic-tac-toe.log")?;
+    let configuration = get_configuration().expect("Failed to read configuration.");
+
+    let log_file = File::create(format!(
+        "{}/network-tic-tac-toe.log",
+        configuration.log_location
+    ))?;
     let subscriber = get_subscriber(
         "network-tic-tac-toe".into(),
         "info".into(),
@@ -18,7 +23,6 @@ async fn main() -> std::io::Result<()> {
     );
     init_subscriber(subscriber);
 
-    let configuration = get_configuration().expect("Failed to read configuration.");
     let application = Application::build(configuration.clone())
         .await
         .map_err(|e| std::io::Error::new(ErrorKind::Interrupted, e))?;
