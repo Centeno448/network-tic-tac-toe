@@ -107,9 +107,7 @@ async fn game_ends_on_tie() {
 
     let expected = serde_json::json!({
         "category": "GameOver",
-        "body": {
-            "outcome": "tie"
-        }
+        "body": "tie"
     });
 
     let player_one_msg: serde_json::Value =
@@ -136,12 +134,14 @@ async fn game_ends_on_diagonal_victory() {
     let player_one_msg = process_message(&mut player_one).await;
     let player_two_msg = process_message(&mut player_two).await;
 
-    let expected = serde_json::json!({
+    let player_one_expected = serde_json::json!({
         "category": "GameOver",
-        "body": {
-            "outcome": "victory",
-            "winner": "Cross"
-        }
+        "body": "victory"
+    });
+
+    let player_two_expected = serde_json::json!({
+        "category": "GameOver",
+        "body": "defeat"
     });
 
     let player_one_msg: serde_json::Value =
@@ -149,8 +149,8 @@ async fn game_ends_on_diagonal_victory() {
     let player_two_msg: serde_json::Value =
         serde_json::from_str(player_two_msg.to_text().unwrap()).unwrap();
 
-    assert_eq!(player_one_msg, expected);
-    assert_eq!(player_two_msg, expected);
+    assert_eq!(player_one_msg, player_one_expected);
+    assert_eq!(player_two_msg, player_two_expected);
 }
 
 #[actix_web::test]
@@ -168,12 +168,14 @@ async fn game_ends_on_cross_victory() {
     let player_one_msg = process_message(&mut player_one).await;
     let player_two_msg = process_message(&mut player_two).await;
 
-    let expected = serde_json::json!({
+    let player_one_expected = serde_json::json!({
         "category": "GameOver",
-        "body": {
-            "outcome": "victory",
-            "winner": "Cross"
-        }
+        "body": "victory"
+    });
+
+    let player_two_expected = serde_json::json!({
+        "category": "GameOver",
+        "body": "defeat"
     });
 
     let player_one_msg: serde_json::Value =
@@ -181,8 +183,8 @@ async fn game_ends_on_cross_victory() {
     let player_two_msg: serde_json::Value =
         serde_json::from_str(player_two_msg.to_text().unwrap()).unwrap();
 
-    assert_eq!(player_one_msg, expected);
-    assert_eq!(player_two_msg, expected);
+    assert_eq!(player_one_msg, player_one_expected);
+    assert_eq!(player_two_msg, player_two_expected);
 }
 
 #[actix_web::test]
@@ -200,12 +202,14 @@ async fn game_ends_on_circle_victory() {
     let player_one_msg = process_message(&mut player_one).await;
     let player_two_msg = process_message(&mut player_two).await;
 
-    let expected = serde_json::json!({
+    let player_one_expected = serde_json::json!({
         "category": "GameOver",
-        "body": {
-            "outcome": "victory",
-            "winner": "Circle"
-        }
+        "body": "defeat"
+    });
+
+    let player_two_expected = serde_json::json!({
+        "category": "GameOver",
+        "body": "victory"
     });
 
     let player_one_msg: serde_json::Value =
@@ -213,6 +217,6 @@ async fn game_ends_on_circle_victory() {
     let player_two_msg: serde_json::Value =
         serde_json::from_str(player_two_msg.to_text().unwrap()).unwrap();
 
-    assert_eq!(player_one_msg, expected);
-    assert_eq!(player_two_msg, expected);
+    assert_eq!(player_one_msg, player_one_expected);
+    assert_eq!(player_two_msg, player_two_expected);
 }

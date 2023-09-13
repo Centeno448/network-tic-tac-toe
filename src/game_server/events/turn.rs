@@ -74,20 +74,17 @@ impl Handler<Turn> for GameServer {
                 let room = self.rooms.get_mut(&room_name).unwrap();
                 room.status = GameRoomStatus::Finished;
 
-                let response = serde_json::json!({
-                    "outcome": "victory",
-                    "winner": &room.current_turn
-                });
+                if let Some(addr) = self.sessions.get(&msg.id) {
+                    let command = Commmand::new_serialized(CommandCategory::GameOver, "victory");
+                    self.send_direct_message(addr, &command);
 
-                let command = Commmand::new_serialized(CommandCategory::GameOver, response);
-                self.send_message_all(&room_name, &command);
+                    let command = Commmand::new_serialized(CommandCategory::GameOver, "defeat");
+                    self.send_message(&room_name, &command, msg.id.clone());
+                }
             } else if is_tie {
                 tracing::info!("Game ended in tie");
                 self.rooms.get_mut(&room_name).unwrap().status = GameRoomStatus::Finished;
-                let response = serde_json::json!({
-                    "outcome": "tie"
-                });
-                let command = Commmand::new_serialized(CommandCategory::GameOver, response);
+                let command = Commmand::new_serialized(CommandCategory::GameOver, "tie");
                 self.send_message_all(&room_name, &command);
             }
         }
