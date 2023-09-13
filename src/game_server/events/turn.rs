@@ -142,14 +142,16 @@ fn is_player_victory(game_room: &GameRoom, player_id: &Uuid, player_move: &TurnM
     let is_row_victory = player_moves
         .iter()
         .filter(|pm| pm.to_string().starts_with(row))
-        .count();
+        .count()
+        == 3;
 
     let is_column_victory = player_moves
         .iter()
         .filter(|pm| pm.to_string().ends_with(column))
-        .count();
+        .count()
+        == 3;
 
-    if is_row_victory == 3 || is_column_victory == 3 {
+    if is_row_victory || is_column_victory {
         return true;
     }
 
