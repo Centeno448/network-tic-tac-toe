@@ -137,7 +137,16 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                 })
                                 .wait(ctx);
                         }
-                        PlayerMessage::Username(username) => self.username = username,
+                        PlayerMessage::Username(username) => {
+                            let username = username.chars().take(30).collect();
+                            let _ = tracing::info_span!(
+                                "Set username",
+                                player_session_id = self.id.to_string(),
+                                username = username
+                            )
+                            .enter();
+                            self.username = username;
+                        }
                     },
                     Err(_) => {
                         tracing::info!("Invalid message {}", trimmed_text);
