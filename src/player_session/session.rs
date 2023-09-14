@@ -71,9 +71,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                             let turn = turn.as_str();
                             self.game_server_addr
                                 .send(game_server::events::Turn {
-                                    id: self.id,
+                                    player_id: self.id,
                                     team_symbol: self.team_symbol,
                                     turn_move: turn.into(),
+                                    room_id: self.room_id,
                                 })
                                 .into_actor(self)
                                 .then(|res, _, ctx| {

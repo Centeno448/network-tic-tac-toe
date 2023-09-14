@@ -9,9 +9,10 @@ use crate::game_server::{GameRoom, GameRoomStatus, GameServer};
 #[derive(Message, Debug)]
 #[rtype(result = "()")]
 pub struct Turn {
-    pub id: Uuid,
+    pub player_id: Uuid,
     pub team_symbol: Option<TeamSymbol>,
     pub turn_move: TurnMove,
+    pub room_id: Option<Uuid>,
 }
 
 impl Turn {
@@ -28,77 +29,74 @@ impl Handler<Turn> for GameServer {
     #[tracing::instrument(
         name = "Turn",
         skip_all,
-        fields(room_id, player_id=%msg.id, player_move=%msg.turn_move, player_team=%msg.team_symbol_to_string())
+        fields(room_id, player_id=%msg.player_id, player_move=%msg.turn_move, player_team=%msg.team_symbol_to_string(), room_id)
     )]
     fn handle(&mut self, msg: Turn, _: &mut Self::Context) -> Self::Result {
-        let result_room: Option<Uuid>;
-        let is_victory;
-        let is_tie;
+        if let Some(room_id) = &msg.room_id {
+            if let Some(room) = find_started_room_by_room_id(self, room_id) {
+                tracing::Span::current().record("room_id", room_id.to_string());
 
-        if let Some((room_id, room)) = find_started_room_by_player_id(self, &msg.id) {
-            tracing::Span::current().record("room_name", room_id.to_string());
-
-            if is_invalid_turn(room.current_turn, msg.team_symbol) {
-                tracing::info!("Invalid turn.");
-                return;
-            }
-
-            if is_duplicate_move(&msg.turn_move, &room.moves_made) {
-                tracing::info!("Duplicate move.");
-                return;
-            }
-
-            result_room = Some(room_id.clone());
-
-            room.moves_made.insert(msg.turn_move.clone(), msg.id);
-
-            is_victory = is_player_victory(&room, &msg.id, &msg.turn_move);
-
-            is_tie = is_game_tie(&is_victory, &room);
-
-            if !is_victory && !is_tie {
-                change_turn(room);
-            }
-        } else {
-            tracing::info!("Player is not in any room with status started.");
-            return;
-        }
-
-        if let Some(room_name) = result_room {
-            let command = Commmand::new_serialized(CommandCategory::Turn, msg.turn_move);
-
-            self.send_message(&room_name, &command, msg.id);
-
-            if is_victory {
-                tracing::info!("Game ended in victory");
-                let room = self.rooms.get_mut(&room_name).unwrap();
-                room.status = GameRoomStatus::Finished;
-
-                if let Some(addr) = self.sessions.get(&msg.id) {
-                    let command = Commmand::new_serialized(CommandCategory::GameOver, "victory");
-                    self.send_direct_message(addr, &command);
-
-                    let command = Commmand::new_serialized(CommandCategory::GameOver, "defeat");
-                    self.send_message(&room_name, &command, msg.id.clone());
+                if is_invalid_turn(room.current_turn, msg.team_symbol) {
+                    tracing::info!("Invalid turn.");
+                    return;
                 }
-            } else if is_tie {
-                tracing::info!("Game ended in tie");
-                self.rooms.get_mut(&room_name).unwrap().status = GameRoomStatus::Finished;
-                let command = Commmand::new_serialized(CommandCategory::GameOver, "tie");
-                self.send_message_all(&room_name, &command);
+
+                if is_duplicate_move(&msg.turn_move, &room.moves_made) {
+                    tracing::info!("Duplicate move.");
+                    return;
+                }
+
+                room.moves_made.insert(msg.turn_move.clone(), msg.player_id);
+
+                if is_player_victory(room, &msg.player_id, &msg.turn_move) {
+                    tracing::info!("Game ended in victory");
+                    room.status = GameRoomStatus::Finished;
+                    send_messages_victory(self, room_id, &msg);
+                } else if is_game_tie(room) {
+                    tracing::info!("Game ended in tie");
+                    room.status = GameRoomStatus::Finished;
+                    send_messages_tie(self, room_id, &msg);
+                } else {
+                    change_turn(room);
+                    let command = Commmand::new_serialized(CommandCategory::Turn, &msg.turn_move);
+                    self.send_message(room_id, &command, msg.player_id.clone());
+                }
+            } else {
+                tracing::info!("Player is not in any room with status started.");
             }
         }
     }
 }
 
-fn find_started_room_by_player_id<'a>(
+fn send_messages_victory(server: &mut GameServer, room_id: &Uuid, msg: &Turn) {
+    let command = Commmand::new_serialized(CommandCategory::Turn, &msg.turn_move);
+    server.send_message(room_id, &command, msg.player_id.clone());
+
+    if let Some(addr) = server.sessions.get(&msg.player_id) {
+        let command = Commmand::new_serialized(CommandCategory::GameOver, "victory");
+        server.send_direct_message(addr, &command);
+
+        let command = Commmand::new_serialized(CommandCategory::GameOver, "defeat");
+        server.send_message(room_id, &command, msg.player_id.clone());
+    }
+}
+
+fn send_messages_tie(server: &mut GameServer, room_id: &Uuid, msg: &Turn) {
+    let command = Commmand::new_serialized(CommandCategory::Turn, &msg.turn_move);
+    server.send_message(room_id, &command, msg.player_id.clone());
+
+    let command = Commmand::new_serialized(CommandCategory::GameOver, "tie");
+    server.send_message_all(room_id, &command);
+}
+
+fn find_started_room_by_room_id<'a>(
     server: &'a mut GameServer,
-    id: &'a Uuid,
-) -> Option<(&'a Uuid, &'a mut GameRoom)> {
+    room_id: &'a Uuid,
+) -> Option<&'a mut GameRoom> {
     server
         .rooms
-        .iter_mut()
-        .find(|(_, room)| room.players.contains_key(id) && room.status == GameRoomStatus::Started)
+        .get_mut(room_id)
+        .filter(|r| r.status == GameRoomStatus::Started)
 }
 
 fn change_turn(room: &mut GameRoom) {
@@ -168,10 +166,6 @@ fn is_player_victory(game_room: &GameRoom, player_id: &Uuid, player_move: &TurnM
     false
 }
 
-fn is_game_tie(is_player_victory: &bool, game_room: &GameRoom) -> bool {
-    if *is_player_victory {
-        return false;
-    }
-
+fn is_game_tie(game_room: &GameRoom) -> bool {
     game_room.moves_made.iter().count() == 9
 }

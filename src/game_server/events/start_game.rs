@@ -29,7 +29,7 @@ impl Handler<StartGame> for GameServer {
         if let Some(room_id) = &msg.room_id {
             tracing::Span::current().record("room_id", &room_id.to_string());
 
-            if let Some(room) = find_waiting_game_room(self, &room_id) {
+            if let Some(room) = find_waiting_game_room(self, room_id) {
                 if msg.team_symbol != Some(TeamSymbol::Cross) {
                     tracing::info!("Circle player attempted to start the game, ignoring.");
                     return;
@@ -52,6 +52,6 @@ fn find_waiting_game_room<'a>(
 ) -> Option<&'a mut GameRoom> {
     server
         .rooms
-        .get_mut(&room_id)
+        .get_mut(room_id)
         .filter(|r| r.status == GameRoomStatus::Waiting && r.players.iter().count() == 2)
 }
