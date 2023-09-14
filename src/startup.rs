@@ -49,6 +49,7 @@ pub async fn index(
         id: Uuid::new_v4(),
         team_symbol: None,
         username: String::from("default"),
+        room_id: None,
         game_server_addr: game_server.get_ref().clone(),
     };
     let resp = ws::start(player_session, &req, stream).map_err(|e| {

@@ -1,10 +1,10 @@
 use actix::prelude::*;
 use uuid::Uuid;
 
-use crate::game_server::{CommandCategory, Commmand, GameRoom, GameServer};
+use crate::game_server::{domain::RoomResponse, CommandCategory, Commmand, GameRoom, GameServer};
 
 #[derive(Message)]
-#[rtype(result = "()")]
+#[rtype(result = "RoomResponse")]
 pub struct CreateMatch {
     pub id: Uuid,
     pub username: String,
@@ -12,7 +12,7 @@ pub struct CreateMatch {
 }
 
 impl Handler<CreateMatch> for GameServer {
-    type Result = ();
+    type Result = RoomResponse;
 
     #[tracing::instrument(name = "Create match", skip_all, fields(player_session_id=%msg.id))]
     fn handle(&mut self, msg: CreateMatch, _: &mut Context<Self>) -> Self::Result {
@@ -30,6 +30,8 @@ impl Handler<CreateMatch> for GameServer {
         if let Some(addr) = self.sessions.get(&msg.id) {
             let command = Commmand::new_serialized(CommandCategory::MatchCreated, room_id);
             self.send_direct_message(addr, &command);
+            return RoomResponse(Some(room_id.clone()));
         }
+        return RoomResponse(None);
     }
 }

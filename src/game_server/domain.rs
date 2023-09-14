@@ -1,6 +1,7 @@
 use actix::dev::{MessageResponse, OneshotSender};
 use actix::prelude::{Actor, Message};
 use serde::Serialize;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, PartialEq, Eq, Hash, Clone)]
 pub enum TurnMove {
@@ -46,6 +47,20 @@ impl From<&str> for TurnMove {
             "MR" => Self::MR,
             "UR" => Self::UR,
             _ => Self::None,
+        }
+    }
+}
+
+pub struct RoomResponse(pub Option<Uuid>);
+
+impl<A, M> MessageResponse<A, M> for RoomResponse
+where
+    A: Actor,
+    M: Message<Result = RoomResponse>,
+{
+    fn handle(self, _: &mut A::Context, tx: Option<OneshotSender<M::Result>>) {
+        if let Some(tx) = tx {
+            let _ = tx.send(self);
         }
     }
 }

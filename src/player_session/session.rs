@@ -10,6 +10,7 @@ pub struct PlayerSession {
     pub id: Uuid,
     pub team_symbol: Option<game_server::domain::TeamSymbol>,
     pub username: String,
+    pub room_id: Option<Uuid>,
     pub game_server_addr: Addr<game_server::GameServer>,
 }
 
@@ -94,9 +95,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                 .into_actor(self)
                                 .then(|res, session, ctx| {
                                     match res {
-                                        Ok(_) => {
+                                        Ok(room_id) => {
                                             session.team_symbol =
                                                 Some(game_server::domain::TeamSymbol::Cross);
+                                            session.room_id = room_id.0;
                                         }
                                         _ => ctx.stop(),
                                     }
