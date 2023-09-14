@@ -116,9 +116,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                 .into_actor(self)
                                 .then(|res, session, ctx| {
                                     match res {
-                                        Ok(_) => {
+                                        Ok(room_id) => {
                                             session.team_symbol =
                                                 Some(game_server::domain::TeamSymbol::Circle);
+                                            session.room_id = room_id.0;
                                         }
                                         _ => ctx.stop(),
                                     }

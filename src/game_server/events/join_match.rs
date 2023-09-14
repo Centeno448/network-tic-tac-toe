@@ -1,10 +1,12 @@
 use actix::prelude::*;
 use uuid::Uuid;
 
-use crate::game_server::{CommandCategory, Commmand, GameRoom, GameRoomStatus, GameServer};
+use crate::game_server::{
+    domain::RoomResponse, CommandCategory, Commmand, GameRoom, GameRoomStatus, GameServer,
+};
 
 #[derive(Message)]
-#[rtype(result = "()")]
+#[rtype(result = "RoomResponse")]
 pub struct JoinMatch {
     pub player_id: Uuid,
     pub room_id: Uuid,
@@ -12,7 +14,7 @@ pub struct JoinMatch {
 }
 
 impl Handler<JoinMatch> for GameServer {
-    type Result = ();
+    type Result = RoomResponse;
 
     #[tracing::instrument(name = "Join match", skip_all, fields(player_session_id=%msg.player_id))]
     fn handle(&mut self, msg: JoinMatch, _: &mut Context<Self>) -> Self::Result {
@@ -35,8 +37,11 @@ impl Handler<JoinMatch> for GameServer {
                 let command =
                     Commmand::new_serialized(CommandCategory::PlayerConnected, &msg.username);
                 self.send_message(&room_id, &command, msg.player_id.clone());
+
+                return RoomResponse(Some(room_id.clone()));
             }
         }
+        return RoomResponse(None);
     }
 }
 
