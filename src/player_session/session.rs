@@ -53,8 +53,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                         PlayerMessage::Start => {
                             self.game_server_addr
                                 .send(game_server::events::StartGame {
-                                    id: self.id,
+                                    player_id: self.id,
                                     team_symbol: self.team_symbol,
+                                    room_id: self.room_id,
                                 })
                                 .into_actor(self)
                                 .then(|res, _, ctx| {

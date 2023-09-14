@@ -8,7 +8,8 @@ use crate::game_server::{
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct StartGame {
-    pub id: Uuid,
+    pub player_id: Uuid,
+    pub room_id: Option<Uuid>,
     pub team_symbol: Option<TeamSymbol>,
 }
 
@@ -23,40 +24,34 @@ impl StartGame {
 impl Handler<StartGame> for GameServer {
     type Result = ();
 
-    #[tracing::instrument(name = "Game Start", skip_all, fields(room_id, player_id=%msg.id, team_symbol=%msg.team_symbol_to_string()))]
+    #[tracing::instrument(name = "Game Start", skip_all, fields(room_id, player_id=%msg.player_id, team_symbol=%msg.team_symbol_to_string(), room_id))]
     fn handle(&mut self, msg: StartGame, _: &mut Self::Context) -> Self::Result {
-        let mut result_room: Option<Uuid> = None;
+        if let Some(room_id) = &msg.room_id {
+            tracing::Span::current().record("room_id", &room_id.to_string());
 
-        if let Some((room_id, room)) = find_waiting_game_room(self, &msg.id) {
-            tracing::Span::current().record("room_id", room_id.to_string());
+            if let Some(room) = find_waiting_game_room(self, &room_id) {
+                if msg.team_symbol != Some(TeamSymbol::Cross) {
+                    tracing::info!("Circle player attempted to start the game, ignoring.");
+                    return;
+                }
 
-            if msg.team_symbol != Some(TeamSymbol::Cross) {
-                tracing::info!("Circle player attempted to start the game, ignoring.");
-                return;
+                room.status = GameRoomStatus::Started;
+
+                let command = Commmand::new_serialized(CommandCategory::GameStart, "");
+                self.send_message_all(room_id, &command);
+            } else {
+                tracing::info!("Player is not in any room with 2 players and status waiting.");
             }
-
-            room.status = GameRoomStatus::Started;
-
-            result_room = Some(room_id.clone());
-        } else {
-            tracing::info!("Player is not in any room with 2 players and status waiting.");
-        }
-
-        if let Some(room_name) = result_room {
-            let command = Commmand::new_serialized(CommandCategory::GameStart, "");
-
-            self.send_message_all(&room_name, &command);
         }
     }
 }
 
 fn find_waiting_game_room<'a>(
     server: &'a mut GameServer,
-    id: &'a Uuid,
-) -> Option<(&'a Uuid, &'a mut GameRoom)> {
-    server.rooms.iter_mut().find(|(_, room)| {
-        room.status == GameRoomStatus::Waiting
-            && room.players.iter().count() == 2
-            && room.players.contains_key(id)
-    })
+    room_id: &'a Uuid,
+) -> Option<&'a mut GameRoom> {
+    server
+        .rooms
+        .get_mut(&room_id)
+        .filter(|r| r.status == GameRoomStatus::Waiting && r.players.iter().count() == 2)
 }
