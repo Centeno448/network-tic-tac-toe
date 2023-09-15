@@ -24,7 +24,7 @@ impl StartGame {
 impl Handler<StartGame> for GameServer {
     type Result = ();
 
-    #[tracing::instrument(name = "Game Start", skip_all, fields(room_id, player_id=%msg.player_id, team_symbol=%msg.team_symbol_to_string(), room_id))]
+    #[tracing::instrument(name = "Game Start", skip_all, fields(player_id=%msg.player_id, team_symbol=%msg.team_symbol_to_string(), room_id))]
     fn handle(&mut self, msg: StartGame, _: &mut Self::Context) -> Self::Result {
         if let Some(room_id) = &msg.room_id {
             tracing::Span::current().record("room_id", &room_id.to_string());
