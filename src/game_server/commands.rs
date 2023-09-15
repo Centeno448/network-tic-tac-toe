@@ -4,7 +4,7 @@ use serde::Serialize;
 pub enum CommandCategory {
     Connected,
     PlayerConnected,
-    PlayerDisconnected,
+    PlayerLeft,
     MatchCreated,
     MatchJoined,
     MatchList,

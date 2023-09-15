@@ -132,6 +132,25 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
                                 })
                                 .wait(ctx);
                         }
+                        PlayerMessage::Leave => {
+                            self.game_server_addr
+                                .send(game_server::events::LeaveMatch {
+                                    player_id: self.id,
+                                    room_id: self.room_id,
+                                })
+                                .into_actor(self)
+                                .then(|res, session, ctx| {
+                                    match res {
+                                        Ok(_) => {
+                                            session.team_symbol = None;
+                                            session.room_id = None;
+                                        }
+                                        _ => ctx.stop(),
+                                    }
+                                    fut::ready(())
+                                })
+                                .wait(ctx);
+                        }
                         PlayerMessage::List => {
                             self.game_server_addr
                                 .send(game_server::events::ListMatches { player_id: self.id })
@@ -173,9 +192,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for PlayerSession {
 impl Handler<game_server::ServerMessage> for PlayerSession {
     type Result = ();
     fn handle(&mut self, msg: game_server::ServerMessage, ctx: &mut Self::Context) -> Self::Result {
-        if msg.0.contains("PlayerDisconnected")
-            || msg.0.contains("PlayerLeft")
-                && self.team_symbol == Some(game_server::domain::TeamSymbol::Circle)
+        if msg.0.contains("PlayerLeft")
+            && self.team_symbol == Some(game_server::domain::TeamSymbol::Circle)
         {
             self.team_symbol = Some(game_server::domain::TeamSymbol::Cross);
         }

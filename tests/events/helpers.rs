@@ -83,6 +83,7 @@ impl TestApp {
 
 pub const START_MESSAGE: &'static str = r#"{ "message": "Start"}"#;
 pub const LIST_MESSAGE: &'static str = r#"{ "message": "List"}"#;
+pub const LEAVE_MESSAGE: &'static str = r#"{ "message": "Leave"}"#;
 
 pub fn build_join_message(match_id: Uuid) -> String {
     format!(r#"{{ "message": "Join", "content": "{}"}}"#, match_id)
@@ -96,12 +97,16 @@ pub fn build_turn_message(turn: &str) -> String {
     format!(r#"{{ "message": "Turn", "content": "{}"}}"#, turn)
 }
 
+pub fn build_username_message(username: &str) -> String {
+    format!(r#"{{ "message": "Username", "content": "{}"}}"#, username)
+}
+
 pub async fn process_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>) -> Message {
-    socket
-        .next()
+    timeout(Duration::from_millis(10), socket.next())
         .await
-        .expect("Failed to fetch response")
         .unwrap()
+        .unwrap()
+        .expect("Failed to recieve message in under 10ms")
 }
 
 pub async fn process_message_result(

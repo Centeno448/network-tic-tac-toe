@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub enum PlayerMessage {
     Start,
     List,
+    Leave,
     Create(String),
     Join(Uuid),
     Turn(String),

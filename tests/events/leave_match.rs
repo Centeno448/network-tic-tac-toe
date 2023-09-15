@@ -1,9 +1,7 @@
 use crate::helpers::*;
-use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
-use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 
 #[actix_web::test]
-async fn player_can_disconnect_before_game_starts() {
+async fn player_can_leave_before_game_starts() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;
@@ -11,12 +9,7 @@ async fn player_can_disconnect_before_game_starts() {
 
     setup_game(&mut player_one, &mut player_two).await;
 
-    let _ = player_two
-        .close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: "".into(),
-        }))
-        .await;
+    send_message(&mut player_two, LEAVE_MESSAGE).await;
 
     let player_one_response = process_message(&mut player_one).await;
 
@@ -31,7 +24,7 @@ async fn player_can_disconnect_before_game_starts() {
 }
 
 #[actix_web::test]
-async fn player_can_disconnect_during_ongoing_match() {
+async fn player_can_leave_during_ongoing_match() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;
@@ -39,12 +32,7 @@ async fn player_can_disconnect_during_ongoing_match() {
 
     setup_and_start_game(&mut player_one, &mut player_two).await;
 
-    let _ = player_two
-        .close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: "".into(),
-        }))
-        .await;
+    send_message(&mut player_two, LEAVE_MESSAGE).await;
 
     let player_one_response = process_message(&mut player_one).await;
 
@@ -59,7 +47,7 @@ async fn player_can_disconnect_during_ongoing_match() {
 }
 
 #[actix_web::test]
-async fn when_player_disconnects_during_match_resets_room() {
+async fn when_player_leaves_during_match_resets_room() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;
@@ -74,12 +62,7 @@ async fn when_player_disconnects_during_match_resets_room() {
 
     process_message(&mut player_two).await;
 
-    let _ = player_two
-        .close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: "".into(),
-        }))
-        .await;
+    send_message(&mut player_two, LEAVE_MESSAGE).await;
 
     process_message(&mut player_one).await;
 
@@ -105,7 +88,7 @@ async fn when_player_disconnects_during_match_resets_room() {
 }
 
 #[actix_web::test]
-async fn when_cross_player_disconnects_circle_player_becomes_cross() {
+async fn when_cross_player_leaves_circle_player_becomes_cross() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;
@@ -120,12 +103,7 @@ async fn when_cross_player_disconnects_circle_player_becomes_cross() {
 
     process_message(&mut player_two).await;
 
-    let _ = player_one
-        .close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: "".into(),
-        }))
-        .await;
+    send_message(&mut player_one, LEAVE_MESSAGE).await; // Cross player leaves
 
     process_message(&mut player_two).await;
 
@@ -151,7 +129,7 @@ async fn when_cross_player_disconnects_circle_player_becomes_cross() {
 }
 
 #[actix_web::test]
-async fn when_both_players_disconnect_deletes_room() {
+async fn when_both_players_leave_deletes_room() {
     let test_app = spawn_app().await;
 
     let mut player_one = test_app.connect_player().await;
@@ -162,21 +140,11 @@ async fn when_both_players_disconnect_deletes_room() {
 
     setup_and_start_game(&mut player_one, &mut player_two).await;
 
-    let _ = player_two
-        .close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: "".into(),
-        }))
-        .await;
+    send_message(&mut player_two, LEAVE_MESSAGE).await;
 
     process_message(&mut player_one).await;
 
-    let _ = player_one
-        .close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: "".into(),
-        }))
-        .await;
+    send_message(&mut player_one, LEAVE_MESSAGE).await;
 
     send_message(&mut player_three, LIST_MESSAGE).await;
 
@@ -185,4 +153,53 @@ async fn when_both_players_disconnect_deletes_room() {
         serde_json::from_str(player_three_response.to_text().unwrap()).unwrap();
 
     assert_eq!(player_three_response.body.matches.len(), 0);
+}
+
+#[actix_web::test]
+async fn when_player_leaves_they_can_join_another_match() {
+    let test_app = spawn_app().await;
+
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
+    let mut player_three = test_app.connect_player().await;
+
+    setup_and_start_game(&mut player_one, &mut player_two).await; // Player 1 and 2 are in a match
+
+    process_message(&mut player_three).await; // Player 3 connects
+
+    send_message(&mut player_three, &build_username_message("playerthree")).await; // Set player three username
+
+    send_message(&mut player_three, &build_create_message("player-3-room")).await;
+
+    send_message(&mut player_two, LEAVE_MESSAGE).await; // Player 2 leaves
+
+    send_message(&mut player_two, LIST_MESSAGE).await;
+
+    let player_two_response = process_message(&mut player_two).await;
+    let player_two_response: MatchListResponse =
+        serde_json::from_str(player_two_response.to_text().unwrap()).unwrap();
+
+    let match_id = player_two_response
+        .body
+        .matches
+        .iter()
+        .filter(|m| m.room_name == "player-3-room")
+        .take(1)
+        .next()
+        .unwrap()
+        .match_id;
+
+    send_message(&mut player_two, &build_join_message(match_id)).await;
+
+    let player_two_response = process_message(&mut player_two).await;
+
+    let expected_p2_response = serde_json::json!({
+        "category": "MatchJoined",
+        "body": "playerthree"
+    });
+
+    let player_two_response: serde_json::Value =
+        serde_json::from_str(player_two_response.to_text().unwrap()).unwrap();
+
+    assert_eq!(player_two_response, expected_p2_response);
 }

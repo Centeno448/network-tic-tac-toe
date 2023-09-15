@@ -1,6 +1,6 @@
 use crate::helpers::{
-    build_create_message, build_join_message, process_message, send_message, spawn_app,
-    MatchListResponse, LIST_MESSAGE,
+    build_create_message, build_join_message, build_username_message, process_message,
+    send_message, spawn_app, MatchListResponse, LIST_MESSAGE,
 };
 
 #[actix_web::test]
@@ -13,16 +13,8 @@ async fn existing_match_can_be_joined() {
     process_message(&mut player_one).await; // Player 1 connects
     process_message(&mut player_two).await; // Player 2 connects
 
-    send_message(
-        &mut player_one,
-        r#"{ "message": "Username", "content": "playerone"}"#,
-    )
-    .await; // Set player one username
-    send_message(
-        &mut player_two,
-        r#"{ "message": "Username", "content": "playertwo"}"#,
-    )
-    .await; // Set player two username
+    send_message(&mut player_one, &build_username_message("playerone")).await; // Set player one username
+    send_message(&mut player_two, &build_username_message("playertwo")).await; // Set player two username
 
     send_message(&mut player_one, &build_create_message("my-own-room")).await;
 
