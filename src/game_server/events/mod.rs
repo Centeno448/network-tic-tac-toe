@@ -6,6 +6,7 @@ mod join_match;
 mod list_matches;
 mod start_game;
 mod turn;
+pub mod utils;
 
 pub use connect::*;
 pub use create_match::*;

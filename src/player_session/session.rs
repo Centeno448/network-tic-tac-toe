@@ -37,7 +37,10 @@ impl Actor for PlayerSession {
 
     fn stopping(&mut self, _: &mut Self::Context) -> actix::Running {
         self.game_server_addr
-            .do_send(game_server::events::Disconnect { id: self.id });
+            .do_send(game_server::events::Disconnect {
+                player_id: self.id,
+                room_id: self.room_id,
+            });
 
         actix::Running::Stop
     }
@@ -171,7 +174,8 @@ impl Handler<game_server::ServerMessage> for PlayerSession {
     type Result = ();
     fn handle(&mut self, msg: game_server::ServerMessage, ctx: &mut Self::Context) -> Self::Result {
         if msg.0.contains("PlayerDisconnected")
-            && self.team_symbol == Some(game_server::domain::TeamSymbol::Circle)
+            || msg.0.contains("PlayerLeft")
+                && self.team_symbol == Some(game_server::domain::TeamSymbol::Circle)
         {
             self.team_symbol = Some(game_server::domain::TeamSymbol::Cross);
         }

@@ -2,13 +2,15 @@ use actix::prelude::*;
 use uuid::Uuid;
 
 use crate::game_server::{
-    domain::TeamSymbol, CommandCategory, Commmand, GameRoom, GameRoomStatus, GameServer,
+    events::utils::{remove_player_from_room, ShouldDeleteRoom},
+    CommandCategory, Commmand, GameServer,
 };
 
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Disconnect {
-    pub id: Uuid,
+    pub player_id: Uuid,
+    pub room_id: Option<Uuid>,
 }
 
 impl Handler<Disconnect> for GameServer {
@@ -17,41 +19,26 @@ impl Handler<Disconnect> for GameServer {
     #[tracing::instrument(
         name = "Player disconnect",
         skip_all,
-        fields(player_session_id=%msg.id)
+        fields(player_session_id=%msg.player_id, room_id)
     )]
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) -> Self::Result {
-        let mut result_room: Option<Uuid> = None;
-        let mut should_delete_room = false;
+        if let Some(room_id) = &msg.room_id {
+            tracing::Span::current().record("room_id", room_id.to_string());
+            if let Some(room) = self.rooms.get_mut(room_id) {
+                match remove_player_from_room(room, &msg.player_id) {
+                    ShouldDeleteRoom::No => {
+                        let command =
+                            Commmand::new(CommandCategory::PlayerDisconnected, "".to_string());
+                        let result = serde_json::to_string(&command).unwrap_or("".into());
 
-        if self.sessions.remove(&msg.id).is_some() {
-            for (room_id, room) in &mut self.rooms {
-                if room.players.contains_key(&msg.id) {
-                    room.players.remove(&msg.id);
-                    if room.players.len() > 0 {
-                        reset_room(room);
-                    } else {
-                        should_delete_room = true;
+                        self.send_message(room_id, &result, msg.player_id.clone());
                     }
-                    result_room = Some(room_id.clone());
+                    ShouldDeleteRoom::Yes => {
+                        self.rooms.remove(room_id);
+                    }
                 }
             }
         }
-
-        if let Some(room_id) = result_room {
-            if should_delete_room {
-                self.rooms.remove(&room_id);
-            } else {
-                let command = Commmand::new(CommandCategory::PlayerDisconnected, "".to_string());
-                let result = serde_json::to_string(&command).unwrap_or("".into());
-
-                self.send_message(&room_id, &result, msg.id);
-            }
-        }
+        self.sessions.remove(&msg.player_id);
     }
-}
-
-fn reset_room(room: &mut GameRoom) {
-    room.moves_made.clear();
-    room.status = GameRoomStatus::Waiting;
-    room.current_turn = TeamSymbol::Cross;
 }
