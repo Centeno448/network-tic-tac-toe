@@ -229,6 +229,23 @@ pub async fn setup_game_for_diagonal_victory(
     process_message(&mut player_one).await;
 }
 
+pub async fn setup_game_for_diagonal_mirror_victory(
+    mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+    mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+) {
+    setup_and_start_game(player_one, player_two).await;
+
+    send_message(&mut player_one, &build_turn_message("UL")).await; // Player 1 turn
+    process_message(&mut player_two).await;
+    send_message(&mut player_two, &build_turn_message("LM")).await; // Player 2 turn
+    process_message(&mut player_one).await;
+
+    send_message(&mut player_one, &build_turn_message("MM")).await; // Player 1 turn
+    process_message(&mut player_two).await;
+    send_message(&mut player_two, &build_turn_message("LL")).await; // Player 2 turn
+    process_message(&mut player_one).await;
+}
+
 pub async fn setup_game_for_cross_victory(
     mut player_one: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
     mut player_two: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,

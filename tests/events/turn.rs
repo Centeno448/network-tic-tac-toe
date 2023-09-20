@@ -154,6 +154,40 @@ async fn game_ends_on_diagonal_victory() {
 }
 
 #[actix_web::test]
+async fn game_ends_on_diagonal_mirror_victory() {
+    let test_app = spawn_app().await;
+
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
+
+    setup_game_for_diagonal_mirror_victory(&mut player_one, &mut player_two).await;
+
+    send_message(&mut player_one, &build_turn_message("LR")).await; // Final turn
+    process_message(&mut player_two).await; // Player 2 recieves final turn
+
+    let player_one_msg = process_message(&mut player_one).await;
+    let player_two_msg = process_message(&mut player_two).await;
+
+    let player_one_expected = serde_json::json!({
+        "category": "GameOver",
+        "body": "victory"
+    });
+
+    let player_two_expected = serde_json::json!({
+        "category": "GameOver",
+        "body": "defeat"
+    });
+
+    let player_one_msg: serde_json::Value =
+        serde_json::from_str(player_one_msg.to_text().unwrap()).unwrap();
+    let player_two_msg: serde_json::Value =
+        serde_json::from_str(player_two_msg.to_text().unwrap()).unwrap();
+
+    assert_eq!(player_one_msg, player_one_expected);
+    assert_eq!(player_two_msg, player_two_expected);
+}
+
+#[actix_web::test]
 async fn game_ends_on_cross_victory() {
     let test_app = spawn_app().await;
 

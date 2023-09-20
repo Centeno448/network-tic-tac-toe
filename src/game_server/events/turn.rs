@@ -159,7 +159,13 @@ fn is_player_victory(game_room: &GameRoom, player_id: &Uuid, player_move: &TurnM
         .count()
         == 3;
 
-    if is_diagonal_victory {
+    let is_diagonal_victory_mirror = player_moves
+        .iter()
+        .filter(|pm| ***pm == TurnMove::UL || ***pm == TurnMove::MM || ***pm == TurnMove::LR)
+        .count()
+        == 3;
+
+    if is_diagonal_victory || is_diagonal_victory_mirror {
         return true;
     }
 
