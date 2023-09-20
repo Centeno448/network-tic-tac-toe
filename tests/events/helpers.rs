@@ -3,7 +3,7 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::time::Duration;
 use tokio::net::TcpStream;
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use url::Url;
@@ -121,7 +121,8 @@ pub async fn send_message(socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>
     socket
         .send(Message::Text(msg.into()))
         .await
-        .expect("Failed to send message.")
+        .expect("Failed to send message.");
+    sleep(Duration::from_millis(10)).await; // sleep to give time for server to process message
 }
 
 pub async fn setup_game(

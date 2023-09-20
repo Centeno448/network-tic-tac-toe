@@ -203,3 +203,36 @@ async fn when_player_leaves_they_can_join_another_match() {
 
     assert_eq!(player_two_response, expected_p2_response);
 }
+
+#[actix_web::test]
+async fn when_player_leaves_after_match_is_over_does_not_reset_room() {
+    let test_app = spawn_app().await;
+
+    let mut player_one = test_app.connect_player().await;
+    let mut player_two = test_app.connect_player().await;
+
+    setup_game_for_cross_victory(&mut player_one, &mut player_two).await;
+
+    send_message(&mut player_one, &build_turn_message("LR")).await; // Final turn
+    process_message(&mut player_two).await; // Player 2 recieves final turn
+
+    process_message(&mut player_one).await;
+    process_message(&mut player_two).await;
+
+    send_message(&mut player_two, LEAVE_MESSAGE).await; // Player 2 leaves
+
+    send_message(&mut player_two, LIST_MESSAGE).await;
+
+    let player_two_response = process_message(&mut player_two).await;
+    let player_two_response: MatchListResponse =
+        serde_json::from_str(player_two_response.to_text().unwrap()).unwrap();
+
+    let finished_game_count = player_two_response
+        .body
+        .matches
+        .iter()
+        .filter(|r| r.status == "Finished")
+        .count();
+
+    assert_eq!(finished_game_count, 1);
+}

@@ -31,7 +31,9 @@ pub fn handle_potential_room_deletion(
 pub fn remove_player_from_room(room: &mut GameRoom, player_id: &Uuid) -> ShouldDeleteRoom {
     room.players.remove(player_id);
     if room.players.len() > 0 {
-        reset_room(room);
+        if room.status != GameRoomStatus::Finished {
+            reset_room(room);
+        }
         return ShouldDeleteRoom::No;
     } else {
         return ShouldDeleteRoom::Yes;
