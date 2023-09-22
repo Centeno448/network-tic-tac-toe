@@ -1,15 +1,17 @@
 use serde_aux::field_attributes::deserialize_number_from_string;
+use std::path::PathBuf;
 
 #[derive(serde::Deserialize, Clone)]
 pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
-    pub log_location: String,
 }
 
 pub fn get_configuration() -> Result<ApplicationSettings, config::ConfigError> {
-    let base_path = std::env::current_dir().expect("Failed to determine the current directory.");
+    let base_path_string = std::env::var("NTTT__CONFIG_LOCATION").unwrap_or_else(|_| ".".into());
+    let mut base_path = PathBuf::new();
+    base_path.push(base_path_string);
     let configuration_path = base_path.join("configuration");
 
     let environment: Environment = std::env::var("NTTT__ENVIRONMENT")
@@ -20,7 +22,7 @@ pub fn get_configuration() -> Result<ApplicationSettings, config::ConfigError> {
     let builder = config::Config::builder()
         .add_source(config::File::from(configuration_path.join("base")).required(true))
         .add_source(
-            config::File::from(configuration_path.join(environment.as_str())).required(true),
+            config::File::from(configuration_path.join(environment.as_str())).required(false),
         )
         .add_source(config::Environment::with_prefix("NTTT").separator("__"));
 

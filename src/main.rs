@@ -1,27 +1,24 @@
 use dotenv::dotenv;
-use std::fs::File;
 use std::io::ErrorKind;
-use std::sync::Mutex;
 
 use network_tic_tac_toe::configuration::get_configuration;
 use network_tic_tac_toe::startup::Application;
-use network_tic_tac_toe::telemetry::{get_subscriber, init_subscriber};
+use network_tic_tac_toe::telemetry::init_logger;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok();
-    let configuration = get_configuration().expect("Failed to read configuration.");
+    match dotenv() {
+        Ok(_) => {
+            println!("Loaded environment variables from env file.");
+        }
+        Err(e) => {
+            println!("Failed to load env file with error \"{}\". Skipping.", e);
+        }
+    }
 
-    let log_file = File::create(format!(
-        "{}/network-tic-tac-toe.log",
-        configuration.log_location
-    ))?;
-    let subscriber = get_subscriber(
-        "network-tic-tac-toe".into(),
-        "info".into(),
-        Mutex::new(log_file),
-    );
-    init_subscriber(subscriber);
+    init_logger();
+
+    let configuration = get_configuration().expect("Failed to read configuration.");
 
     let application = Application::build(configuration.clone())
         .await
