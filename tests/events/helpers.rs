@@ -57,6 +57,8 @@ pub async fn spawn_app() -> TestApp {
         let mut c = get_configuration().expect("Failed to read configuration.");
         // use random port
         c.port = 0;
+        // use localhost for the tests
+        c.host = "127.0.0.1".into();
 
         c
     };
